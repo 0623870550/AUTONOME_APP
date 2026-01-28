@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Redirection vers AUTONOME</title>
+  <style>
+    body {
+      background: #000;
+      color: #F8FF00;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding-top: 80px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Redirection vers l'application AUTONOME…</h2>
+  <p>Veuillez patienter une seconde.</p>
+
+  <script>
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const token = hashParams.get("access_token");
+    const type = hashParams.get("type");
+
+    if (token) {
+      window.location.href = `autonome://auth/callback?token=${token}&type=${type}`;
+    } else {
+      document.body.innerHTML = "<h2>Erreur : aucun token reçu.</h2>";
+    }
+  </script>
+</body>
+</html>
