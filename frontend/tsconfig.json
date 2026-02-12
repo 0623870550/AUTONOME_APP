@@ -3,12 +3,19 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "jsx": "react-native",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "paths": {
-      "@/*": ["app/*"]
+      "@/*": ["app/*"],
+      "app/*": ["app/*"],
+      "context/*": ["context/*"],
+      "hooks/*": ["hooks/*"],
+      "components/*": ["components/*"],
+      "constants/*": ["constants/*"],
+      "lib/*": ["lib/*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx"
-  ]
+  "include": ["**/*.ts", "**/*.tsx"]
 }

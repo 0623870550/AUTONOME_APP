@@ -1,10 +1,11 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, View } from 'react-native';
-import { IconSymbol } from '../components/ui/icon-symbol';
-import { useAlert } from '../context/AlertContext';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../../lib/supabase';
+import { useAlert } from 'app/context/AlertContext';
+import { IconSymbol } from 'components/ui/icon-symbol';
+import { supabase } from 'lib/supabase';
 
 export default function TabLayout() {
   const { alert } = useAlert();
@@ -58,7 +59,7 @@ export default function TabLayout() {
     isMobilisation,
     hasNotification,
   }: {
-    name: string;
+    name: any; // correction ici
     focused: boolean;
     isMobilisation?: boolean;
     hasNotification?: boolean;

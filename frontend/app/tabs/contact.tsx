@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, Linking } from 'react-native';
-import PageContainer from '../../components/PageContainer';
-import AuthGate from '@/app/auth-gate';
+import PageContainer from 'components/PageContainer';
+import AuthGate from 'app/auth-gate';
 
 export default function Contact() {
   const [message, setMessage] = useState('');

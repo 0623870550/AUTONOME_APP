@@ -9,9 +9,9 @@ import {
   Image,
   Modal,
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
-import PageContainer from '@/components/PageContainer';
-import { useAgentRole } from '@/context/AgentRoleContext';
+import { supabase } from 'lib/supabase';
+import PageContainer from 'components/PageContainer';
+import { useAgentRole } from 'context/AgentRoleContext';
 
 export default function AlerteAgentDetail() {
   const router = useRouter();

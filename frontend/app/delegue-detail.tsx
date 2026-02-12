@@ -10,8 +10,8 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
-import PageContainer from '@/components/PageContainer';
+import { supabase } from 'lib/supabase';
+import PageContainer from 'components/PageContainer';
 
 type AlerteRow = {
   id: string;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Pressable, StyleSheet, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import PageContainer from '../../components/PageContainer';
-import AuthGate from '@/app/auth-gate';
+import AuthGate from 'app/auth-gate';
 
 // Dashboards (sans props)
 import AgentDashboard from '../../dashboards/AgentDashboard';
@@ -10,7 +10,7 @@ import DelegueDashboard from '../../dashboards/DelegueDashboard';
 import AdminDashboard from '../../dashboards/AdminDashboard';
 
 // Supabase
-import { supabase } from '@/lib/supabase';
+import { supabase } from 'lib/supabase';
 
 export default function Compte() {
   const [user, setUser] = useState<any>(null);

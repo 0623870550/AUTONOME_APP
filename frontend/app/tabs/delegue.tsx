@@ -7,10 +7,11 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { router } from 'expo-router';
 
-import AuthGate from '@/app/auth-gate';
-import PageContainer from '../../components/PageContainer';
-import { supabase } from '@/lib/supabase';
+import AuthGate from 'app/auth-gate';
+import PageContainer from 'components/PageContainer';
+import { supabase } from 'lib/supabase';
 
 type AlerteRow = {
   id: string;
@@ -130,8 +131,6 @@ export default function DelegueScreen() {
                   shadowOffset: { width: 0, height: 2 },
                 }}
                 onPress={() => router.push(`/delegue-detail?id=${a.id}`)}
-                
-                // plus tard : onPress={() => navigation vers détail}
               >
                 <View
                   style={{

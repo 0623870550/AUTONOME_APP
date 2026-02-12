@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '@/lib/supabase';
-import { useSession } from '@/context/SupabaseSessionProvider';
+import { supabase } from 'lib/supabase';
+import { useSession } from 'context/SupabaseSessionProvider';
 import { useRouter } from 'expo-router';
 
 export default function DashboardAgent() {

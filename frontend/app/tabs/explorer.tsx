@@ -7,10 +7,11 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import PageContainer from '../../components/PageContainer';
-import React from 'react';
-import AuthGate from '../auth-gate';
+
+import PageContainer from 'components/PageContainer';
+import AuthGate from 'app/auth-gate';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React from 'react';
 
 /* ---------------------------------------------
    TYPES

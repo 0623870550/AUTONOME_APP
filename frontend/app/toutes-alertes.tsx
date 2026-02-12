@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { supabase } from '@/lib/supabase';
+import { supabase } from 'lib/supabase';
 import { useRouter } from 'expo-router';
-import PageContainer from '../components/PageContainer';
-import { useAgentRole } from '@/context/AgentRoleContext';
-import { useAgentPermission } from '@/context/AgentPermissionContext';
+import PageContainer from 'components/PageContainer';
+import { useAgentRole } from 'context/AgentRoleContext';
+import { useAgentPermission } from 'context/AgentPermissionContext';
 
 export default function ToutesAlertesScreen() {
   const router = useRouter();

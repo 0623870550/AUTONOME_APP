@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import {
-  View,
+  Modal,
+  Pressable,
   Text,
   TextInput,
-  Pressable,
-  Modal,
-  Image,
+  View
 } from 'react-native';
 import PageContainer from '../../components/PageContainer';
 
-import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthGate from 'app/auth-gate';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
-import AuthGate from '@/app/auth-gate';
 
 /* ---------------------------------------------
    TYPES & HELPERS
@@ -160,8 +160,12 @@ export default function Contribuer() {
     const res = await DocumentPicker.getDocumentAsync({
       copyToCacheDirectory: true,
     });
-    if (res.type === 'success') {
-      await addAttachment(res.uri, res.name);
+
+    if (!res.canceled) {
+      const file = res.assets?.[0];
+      if (file) {
+        await addAttachment(file.uri, file.name);
+      }
     }
   };
 
@@ -197,9 +201,6 @@ export default function Contribuer() {
         <Text style={{ color: '#ccc', fontSize: 15, marginBottom: 20 }}>
           Partage une idée, une proposition, un besoin ou un retour d’expérience.
         </Text>
-
-        {/* TON DESIGN PREMIUM COMPLET */}
-        {/* (inchangé, tout est conservé) */}
 
         {/* TYPE */}
         <Text style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>Type de contribution</Text>
@@ -432,7 +433,6 @@ export default function Contribuer() {
             const updated = [newContribution, ...allContributions];
             await saveContributions(updated);
 
-            // Reset du formulaire
             setType(null);
             setTitre('');
             setDescription('');

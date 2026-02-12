@@ -1,16 +1,16 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
 
-// ⚠️ Tous les alias @/... remplacés par des chemins relatifs
-import { AlertProvider } from './context/AlertContext';
-import { useColorScheme } from './hooks/use-color-scheme';
-import { SupabaseSessionProvider } from './context/SupabaseSessionProvider';
-import { AgentRoleProvider } from './context/AgentRoleContext';
+import { AgentRoleProvider } from 'app/context/AgentRoleContext';
+import { AlertProvider } from 'app/context/AlertContext';
+import { SupabaseSessionProvider } from 'app/context/SupabaseSessionProvider';
 
-import AuthGate from './auth-gate';
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useColorScheme } from 'hooks/use-color-scheme';
+
+import AuthGate from 'app/auth-gate';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

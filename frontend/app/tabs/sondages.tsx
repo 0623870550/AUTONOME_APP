@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import PageContainer from '../../components/PageContainer';
-import AuthGate from '@/app/auth-gate';
+import AuthGate from 'app/auth-gate';
 
 export default function Sondages() {
   const [activeSurvey, setActiveSurvey] = useState<any>(null);

@@ -1,26 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
+  Image,
   Modal,
   Pressable,
-  Image,
-  Switch,
   ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
-import AuthGate from '@/app/auth-gate';
-import PageContainer from '../../components/PageContainer';
+import AuthGate from 'app/auth-gate';
+import PageContainer from 'components/PageContainer';
 
-import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
 
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 
@@ -29,9 +29,9 @@ import {
   GestureDetector,
 } from 'react-native-gesture-handler';
 
-import { supabase } from '@/lib/supabase';
-import { useAgentRole } from '@/context/AgentRoleContext';
+import { useAgentRole } from 'app/context/AgentRoleContext';
 import { useRouter } from 'expo-router';
+import { supabase } from 'lib/supabase';
 
 /* ---------------------------------------------
    TYPES
@@ -82,7 +82,7 @@ const uploadAttachmentToSupabase = async (
 ): Promise<string | null> => {
   try {
     const fileData = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64', // ✔️ Correction Expo 49+
     });
 
     const filePath = `${Date.now()}_${fileName}`;
@@ -116,7 +116,7 @@ const uploadAttachmentToSupabase = async (
 
 export default function AlerteScreen() {
   const router = useRouter();
-  const { roleAgent } = useAgentRole(); // 🟨 RÉCUPÉRATION DU RÔLE SPP/PATS
+  const { roleAgent } = useAgentRole();
 
   /* ---------------------------------------------
      USER
@@ -228,9 +228,12 @@ export default function AlerteScreen() {
       copyToCacheDirectory: true,
     });
 
-    if (result.type === 'success') {
-      await addAttachment(result.uri, result.name, result.size || 0);
-    }
+    if (!result.canceled) {
+  const file = result.assets?.[0];
+  if (file) {
+    await addAttachment(file.uri, file.name, file.size || 0);
+  }
+}
   };
 
   /* ---------------------------------------------
@@ -261,7 +264,7 @@ export default function AlerteScreen() {
       statut: 'en_cours',
       anonyme,
       created_by: user.id,
-      role_agent: roleAgent, // 🟨 AJOUT ESSENTIEL
+      role_agent: roleAgent,
       attachments,
       comment_interne: commentInterne,
 
@@ -281,7 +284,6 @@ export default function AlerteScreen() {
       return;
     }
 
-    // Reset
     setType('');
     setLieu('');
     setDescription('');

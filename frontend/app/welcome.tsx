@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
-import AuthGate from '@/app/auth-gate';
+import AuthGate from 'app/auth-gate';
 
 export default function Welcome() {
   const router = useRouter();

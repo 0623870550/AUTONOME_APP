@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 
-import { useSession } from './context/SupabaseSessionProvider';
-import { supabase } from './lib/supabase';
-import LoaderAutonome from './components/ui/LoaderAutonome';
+import LoaderAutonome from 'components/ui/LoaderAutonome';
+import { useSession } from 'context/SupabaseSessionProvider';
+import { supabase } from 'lib/supabase';
 
-import { useAgentRole } from './context/AgentRoleContext';
-import { useAgentPermission } from './context/AgentPermissionContext';
+import { useAgentRole } from 'context/AgentRoleContext';
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const session = useSession();
 
   const { setRoleAgent } = useAgentRole();
-  const { setRole } = useAgentPermission();
 
   const [mounted, setMounted] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
@@ -25,10 +23,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!mounted) return;
     if (session === undefined) return;
+
     if (session === null) {
       router.replace('/signup');
       return;
     }
+
     loadRoles();
   }, [session, mounted]);
 
@@ -37,15 +37,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     const { data, error } = await supabase
       .from('agents')
-      .select('role_agent, role')
+      .select('role_agent')
       .eq('id', session.user.id)
       .single();
 
     if (!error && data) {
       setRoleAgent(data.role_agent);
-      setRole(data.role);
     } else {
-      console.log("Erreur chargement rôles :", error);
+      console.log("Erreur chargement rôle agent :", error);
     }
 
     setLoadingRoles(false);

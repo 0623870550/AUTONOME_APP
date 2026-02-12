@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView, Pressable } from 'react-native';
-import { supabase } from '@/lib/supabase';
+import { supabase } from 'lib/supabase';
 import { useRouter } from 'expo-router';
 
 export default function Profile() {

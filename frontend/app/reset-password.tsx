@@ -7,13 +7,13 @@ import {
   Animated,
   Vibration,
 } from 'react-native';
-import { supabase } from '@/lib/supabase';
+import { supabase } from 'lib/supabase';
 import { useRouter } from 'expo-router';
 
-import LoaderAutonome from '@/components/ui/LoaderAutonome';
-import InputAutonome from '@/components/ui/InputAutonome';
-import ButtonAutonome from '@/components/ui/ButtonAutonome';
-import HeaderAuth from '@/components/ui/HeaderAuth';
+import LoaderAutonome from 'components/ui/LoaderAutonome';
+import InputAutonome from 'components/ui/InputAutonome';
+import ButtonAutonome from 'components/ui/ButtonAutonome';
+import HeaderAuth from 'components/ui/HeaderAuth';
 
 export default function ResetPassword() {
   const router = useRouter();
