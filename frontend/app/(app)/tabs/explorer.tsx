@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import PageContainer from 'components/PageContainer';
+import { useRouter } from 'expo-router';
 import AuthGate from 'app/auth-gate';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
@@ -65,6 +66,7 @@ const STORAGE_KEY = 'contributionsData';
 ---------------------------------------------- */
 
 export default function Explorer() {
+  const router = useRouter();
   const [allContributions, setAllContributions] = useState<Contribution[]>([]);
   const [filtered, setFiltered] = useState<Contribution[]>([]);
   const [search, setSearch] = useState('');
@@ -220,11 +222,70 @@ export default function Explorer() {
     <AuthGate>
       <PageContainer>
 
+        {/* EN-TÊTE */}
+        <Text style={{ color: '#F8FF00', fontSize: 26, fontWeight: '700', marginBottom: 6 }}>
+          Explorez les idées
+        </Text>
+        <Text style={{ color: '#ccc', fontSize: 14, marginBottom: 20 }}>
+          Découvrez et soutenez les propositions et retours de vos collègues.
+        </Text>
+
+        {/* RECHERCHE */}
+        <View style={{ flexDirection: 'row', backgroundColor: '#111', borderRadius: 12, paddingHorizontal: 12, alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#333' }}>
+          <Text style={{ fontSize: 18, marginRight: 8 }}>🔍</Text>
+          <TextInput
+            placeholder="Rechercher une contribution..."
+            placeholderTextColor="#888"
+            value={search}
+            onChangeText={setSearch}
+            style={{ color: '#fff', flex: 1, paddingVertical: 12, fontSize: 15 }}
+          />
+        </View>
+
+        {/* ONGLETS DE TRI */}
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 25 }}>
+          {[
+            { key: 'populaires', label: '⭐ Poulaire' },
+            { key: 'recentes', label: '🆕 Récent' },
+            { key: 'tendances', label: '🔥 Tendance' },
+          ].map((tab) => (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key as any)}
+              style={{
+                flex: 1,
+                paddingVertical: 10,
+                borderRadius: 20,
+                backgroundColor: activeTab === tab.key ? '#F8FF00' : 'rgba(255,255,255,0.1)',
+                alignItems: 'center'
+              }}
+            >
+              <Text numberOfLines={1} style={{ color: activeTab === tab.key ? '#000' : '#fff', fontWeight: '600', fontSize: 12 }}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         {/* LISTE DES CONTRIBUTIONS */}
         {sorted.length === 0 && (
-          <Text style={{ color: '#777', textAlign: 'center', marginTop: 40 }}>
-            Aucune contribution trouvée.
-          </Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 20, backgroundColor: '#111', padding: 30, borderRadius: 16, borderWidth: 1, borderColor: '#333', borderStyle: 'dashed' }}>
+            <Text style={{ fontSize: 45, marginBottom: 15 }}>🚀</Text>
+            <Text style={{ color: '#FFD500', fontSize: 20, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
+              L'Explorateur est calme...
+            </Text>
+            <Text style={{ color: '#aaa', textAlign: 'center', fontSize: 14, lineHeight: 22, marginBottom: 25 }}>
+              Il n'y a encore aucune contribution. Soyez le tout premier à lancer la dynamique et partager vos idées !
+            </Text>
+            <Pressable
+              onPress={() => router.push('/contribuer')}
+              style={{ backgroundColor: '#F8FF00', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 24 }}
+            >
+              <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 15 }}>
+                💡 Publier une contribution
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         {sorted.map((c) => (

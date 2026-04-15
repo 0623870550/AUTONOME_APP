@@ -1,40 +1,33 @@
-import { View, Text, StyleSheet } from 'react-native';
-import AuthGate from '@/app/auth-gate';
+import { StyleSheet, Text, View } from 'react-native';
+import AuthGate from '../auth-gate';
 
-export default function AdminDashboard() {
+export default function Page() {
   return (
     <AuthGate>
       <View style={styles.container}>
-        <Text style={styles.title}>Espace Admin</Text>
+        <Text style={styles.title}>Espace Délégué</Text>
         <Text style={styles.subtitle}>
-          Gestion complète de l’application syndicale.
+          Outils et informations pour votre mission syndicale.
         </Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🗳️ Gestion des sondages</Text>
+          <Text style={styles.cardTitle}>🚨 Alertes à traiter</Text>
           <Text style={styles.cardText}>
-            Créez, activez et analysez les sondages.
+            Consultez les alertes des agents et répondez-y.
           </Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>📢 Actualités</Text>
+          <Text style={styles.cardTitle}>🗳️ Sondages</Text>
           <Text style={styles.cardText}>
-            Publiez et gérez les actualités syndicales.
+            Accédez aux listes des votants et aux résultats détaillés.
           </Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>👥 Gestion des délégués</Text>
+          <Text style={styles.cardTitle}>📄 Documents internes</Text>
           <Text style={styles.cardText}>
-            Ajoutez, modifiez ou supprimez des délégués.
-          </Text>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>📊 Statistiques</Text>
-          <Text style={styles.cardText}>
-            Suivez l’activité globale de l’application.
+            Accédez aux modèles, procédures et ressources internes.
           </Text>
         </View>
       </View>

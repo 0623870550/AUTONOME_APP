@@ -1,16 +1,8 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import PageContainer from '../../components/PageContainer';
-import AuthGate from 'app/auth-gate';
-
-// Dashboards (sans props)
-import AgentDashboard from '../../dashboards/AgentDashboard';
-import DelegueDashboard from '../../dashboards/DelegueDashboard';
-import AdminDashboard from '../../dashboards/AdminDashboard';
-
-// Supabase
 import { supabase } from 'lib/supabase';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import PageContainer from '../../../components/PageContainer';
 
 export default function Compte() {
   const [user, setUser] = useState<any>(null);
@@ -27,7 +19,7 @@ export default function Compte() {
     loadUser();
   }, []);
 
-  // Sélection photo (stockage local OK)
+  // Sélection photo
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -45,85 +37,72 @@ export default function Compte() {
   // ÉCRAN DE CHARGEMENT
   if (loading) {
     return (
-      <AuthGate>
-        <PageContainer>
-          <View style={styles.center}>
-            <ActivityIndicator size="large" color="#F8FF00" />
-            <Text style={styles.loadingText}>Chargement du profil…</Text>
-          </View>
-        </PageContainer>
-      </AuthGate>
+      <PageContainer>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#F8FF00" />
+          <Text style={styles.loadingText}>Chargement du profil…</Text>
+        </View>
+      </PageContainer>
     );
   }
 
   // PAS D’UTILISATEUR
   if (!user) {
     return (
-      <AuthGate>
-        <PageContainer>
-          <Text style={styles.noUserText}>
-            Aucun utilisateur connecté.
-          </Text>
-        </PageContainer>
-      </AuthGate>
+      <PageContainer>
+        <Text style={styles.noUserText}>Aucun utilisateur connecté.</Text>
+      </PageContainer>
     );
   }
 
-  // UTILISATEUR CONNECTÉ → PAGE PREMIUM
+  // UTILISATEUR CONNECTÉ → PAGE COMPTE
   return (
-    <AuthGate>
-      <PageContainer>
+    <PageContainer>
 
-        {/* HEADER PREMIUM */}
-        <View style={styles.header}>
-          <Pressable onPress={pickImage}>
-            {profileImage ? (
-              <Image source={{ uri: profileImage }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarLetter}>
-                  {user.email.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-
-          <View>
-            <Text style={styles.userEmail}>{user.email}</Text>
-
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>Agent SDMIS</Text>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Pressable onPress={pickImage}>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarLetter}>
+                {user.email.charAt(0).toUpperCase()}
+              </Text>
             </View>
+          )}
+        </Pressable>
+
+        <View>
+          <Text style={styles.userEmail}>{user.email}</Text>
+
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>Agent SDMIS</Text>
           </View>
         </View>
+      </View>
 
-        {/* CARTE IDENTITÉ */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Identité syndicale</Text>
+      {/* CARTE IDENTITÉ */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Identité syndicale</Text>
 
-          <Text style={styles.cardLine}>📧 Email : {user.email}</Text>
-          <Text style={styles.cardLine}>🆔 ID : {user.id}</Text>
-        </View>
+        <Text style={styles.cardLine}>📧 Email : {user.email}</Text>
+        <Text style={styles.cardLine}>🆔 ID : {user.id}</Text>
+      </View>
 
-        {/* DASHBOARD SPÉCIFIQUE */}
-        <View style={{ marginTop: 20 }}>
-          <AgentDashboard />
-        </View>
+      {/* ACTIONS */}
+      <View style={styles.actions}>
+        <Pressable
+          style={styles.actionButton}
+          onPress={async () => {
+            await supabase.auth.signOut();
+          }}
+        >
+          <Text style={styles.actionText}>Se déconnecter</Text>
+        </Pressable>
+      </View>
 
-        {/* ACTIONS */}
-        <View style={styles.actions}>
-          <Pressable
-            style={styles.actionButton}
-            onPress={async () => {
-              await supabase.auth.signOut();
-            }}
-          >
-            <Text style={styles.actionText}>Se déconnecter</Text>
-          </Pressable>
-        </View>
-
-      </PageContainer>
-    </AuthGate>
+    </PageContainer>
   );
 }
 
@@ -141,7 +120,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  // HEADER PREMIUM
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -189,7 +167,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // CARTE IDENTITÉ
   card: {
     backgroundColor: '#111',
     borderRadius: 12,
@@ -208,7 +185,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  // ACTIONS
   actions: {
     marginTop: 30,
   },

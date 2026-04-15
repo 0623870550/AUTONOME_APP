@@ -1,53 +1,26 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from 'lib/supabase';
-import { useSession } from 'context/SupabaseSessionProvider';
 import { useRouter } from 'expo-router';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function DashboardAgent() {
-  const session = useSession();
+// Définition du type Agent (simple et flexible)
+type Agent = {
+  prenom: string;
+  nom: string;
+  avatar_url?: string;
+  type_agent: string;
+};
+
+export default function Page({ agent }: { agent: Agent }) {
   const router = useRouter();
 
-  const [agent, setAgent] = useState<any>(null);
-
-  useEffect(() => {
-    if (!session?.user) return;
-
-    const fetchAgent = async () => {
-      const { data, error } = await supabase
-        .from('agents')
-        .select('*')
-        .eq('email', session.user.email)
-        .single();
-
-      if (!error) setAgent(data);
-    };
-
-    fetchAgent();
-  }, [session]);
-
-  // ÉTAT : Chargement
-  if (!agent) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Image
-          source={require('@/assets/images/logo_autonome_sdmis.png')}
-          style={styles.logo}
-        />
-        <Text style={{ color: '#fff', marginTop: 20 }}>Chargement...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // ÉTAT : Dashboard agent
   return (
     <SafeAreaView style={styles.container}>
 
       {/* LOGO AUTONOME */}
       <Image
-        source={require('@/assets/images/logo_autonome_sdmis.png')}
+        source={require('../assets/logo_autonome_sdmis.png')}
         style={styles.logo}
+        resizeMode="contain"
       />
 
       {/* CARTE AGENT */}
@@ -105,7 +78,6 @@ const styles = StyleSheet.create({
     height: 140,
     marginTop: 10,
     marginBottom: 10,
-    resizeMode: 'contain',
   },
 
   card: {

@@ -3,14 +3,15 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
-import { AgentRoleProvider } from 'app/context/AgentRoleContext';
-import { AlertProvider } from 'app/context/AlertContext';
-import { SupabaseSessionProvider } from 'app/context/SupabaseSessionProvider';
+import { AgentPermissionProvider } from '../context/AgentPermissionContext';
+import { AgentRoleProvider } from '../context/AgentRoleContext';
+import { AlertProvider } from '../context/AlertContext';
+import { SupabaseSessionProvider } from '../context/SupabaseSessionProvider';
 
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useColorScheme } from 'hooks/use-color-scheme';
 
-import AuthGate from 'app/auth-gate';
+import AuthGate from './auth-gate';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -19,14 +20,18 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SupabaseSessionProvider>
         <AgentRoleProvider>
-          <AuthGate>
-            <AlertProvider>
+          <AlertProvider>
+            <AgentPermissionProvider>
               <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                <Stack screenOptions={{ headerShown: false }} />
+                
+                <AuthGate>
+                  <Stack screenOptions={{ headerShown: false }} />
+                </AuthGate>
+
                 <StatusBar style="auto" />
               </ThemeProvider>
-            </AlertProvider>
-          </AuthGate>
+            </AgentPermissionProvider>
+          </AlertProvider>
         </AgentRoleProvider>
       </SupabaseSessionProvider>
     </GestureHandlerRootView>

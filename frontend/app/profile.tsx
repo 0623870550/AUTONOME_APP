@@ -1,33 +1,25 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, ScrollView, Pressable } from 'react-native';
-import { supabase } from 'lib/supabase';
 import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSession } from '../context/SupabaseSessionProvider';
+import { supabase } from '../lib/supabase';
 
 export default function Profile() {
   const router = useRouter();
+  const { session } = useSession();
 
   const [loading, setLoading] = useState(true);
   const [agent, setAgent] = useState<any>(null);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    if (!session?.user) return;
 
-  const loadProfile = async () => {
+    loadProfile(session.user.id);
+  }, [session]);
+
+  const loadProfile = async (userId: string) => {
     setLoading(true);
 
-    // 1️⃣ Récupérer l'utilisateur connecté
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !authData.user) {
-      Alert.alert('Erreur', 'Impossible de récupérer votre session.');
-      router.replace('/login');
-      return;
-    }
-
-    const userId = authData.user.id;
-
-    // 2️⃣ Charger la ligne dans agents (RLS: auth.uid() = id)
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -43,7 +35,6 @@ export default function Profile() {
     setLoading(false);
   };
 
-  // 🔐 Déconnexion
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -93,7 +84,6 @@ export default function Profile() {
         <Text style={styles.value}>{agent.email}</Text>
       </View>
 
-      {/* Bouton modifier */}
       <Text
         style={styles.editButton}
         onPress={() => router.push('/edit-profile')}
@@ -101,7 +91,6 @@ export default function Profile() {
         ✏️ Modifier mon profil
       </Text>
 
-      {/* 🚪 Bouton déconnexion */}
       <Pressable style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>🚪 Se déconnecter</Text>
       </Pressable>
@@ -152,8 +141,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-
-  // 🔐 Styles du bouton déconnexion
   logoutButton: {
     marginTop: 25,
     padding: 14,

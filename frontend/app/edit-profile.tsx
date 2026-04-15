@@ -1,21 +1,23 @@
-import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'expo-router';
+import { supabase } from 'lib/supabase';
+import { USE_NATIVE_DRIVER } from '../lib/platform';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   Alert,
   Animated,
-  Vibration,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
   TextInput,
+  Vibration,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from 'lib/supabase';
-import { useSession } from 'context/SupabaseSessionProvider';
-import { useRouter } from 'expo-router';
+import { useSession } from '../context/SupabaseSessionProvider';
 
 export default function EditProfileScreen() {
-  const session = useSession();
+  const { session } = useSession();
   const router = useRouter();
 
   const [agent, setAgent] = useState<any>(null);
@@ -29,11 +31,11 @@ export default function EditProfileScreen() {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
 
@@ -44,10 +46,10 @@ export default function EditProfileScreen() {
       const { data, error } = await supabase
         .from('agents')
         .select('*')
-        .eq('id', session.user.id) // ✅ filtrage par id
+        .eq('id', session.user.id)
         .single();
 
-      if (!error) {
+      if (!error && data) {
         setAgent(data);
         setPrenom(data.prenom);
         setNom(data.nom);
@@ -87,7 +89,7 @@ export default function EditProfileScreen() {
         type_agent: typeAgent,
         telephone: telephone || null,
       })
-      .eq('id', session.user.id); // ✅ mise à jour sécurisée via id
+      .eq('id', session.user.id);
 
     setLoading(false);
 
@@ -194,9 +196,10 @@ const styles = StyleSheet.create({
   },
   validInput: {
     borderColor: '#F8FF00',
-    shadowColor: '#F8FF00',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    ...Platform.select({
+      web: { boxShadow: '0px 0px 6px rgba(248, 255, 0, 0.4)' },
+      default: { shadowColor: '#F8FF00', shadowOpacity: 0.4, shadowRadius: 6 },
+    }),
   },
   invalidInput: {
     borderColor: '#FF4444',

@@ -1,23 +1,24 @@
-import { useState, useRef } from 'react';
+import { useRouter } from 'expo-router';
+import { useRef, useState } from 'react';
 import {
-  View,
   Alert,
-  StyleSheet,
-  Pressable,
-  Text,
   Animated,
-  Vibration,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
+  StyleSheet,
+  Text,
+  Vibration,
+  View,
 } from 'react-native';
-import { supabase } from 'lib/supabase';
-import { useRouter } from 'expo-router';
+import { supabase } from '../lib/supabase';
 
-import LoaderAutonome from 'components/ui/LoaderAutonome';
-import InputAutonome from 'components/ui/InputAutonome';
+import { USE_NATIVE_DRIVER } from '../lib/platform';
 import ButtonAutonome from 'components/ui/ButtonAutonome';
 import HeaderAuth from 'components/ui/HeaderAuth';
+import InputAutonome from 'components/ui/InputAutonome';
+import LoaderAutonome from 'components/ui/LoaderAutonome';
 
 export default function Login() {
   const router = useRouter();
@@ -30,11 +31,11 @@ export default function Login() {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
 
@@ -76,7 +77,7 @@ export default function Login() {
       return;
     }
 
-    router.replace('/(tabs)');
+    router.replace('/(app)/tabs');
   };
 
   const handleResetPassword = async () => {
@@ -201,9 +202,10 @@ const styles = StyleSheet.create({
   },
   validInput: {
     borderColor: '#F8FF00',
-    shadowColor: '#F8FF00',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    ...Platform.select({
+      web: { boxShadow: '0px 0px 6px rgba(248, 255, 0, 0.4)' },
+      default: { shadowColor: '#F8FF00', shadowOpacity: 0.4, shadowRadius: 6 },
+    }),
   },
   invalidInput: {
     borderColor: '#FF4444',

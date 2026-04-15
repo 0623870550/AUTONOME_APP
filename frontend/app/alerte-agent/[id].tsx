@@ -1,22 +1,24 @@
+import PageContainer from 'components/PageContainer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { supabase } from 'lib/supabase';
 import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
   ActivityIndicator,
   Image,
   Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from 'react-native';
-import { supabase } from 'lib/supabase';
-import PageContainer from 'components/PageContainer';
-import { useAgentRole } from 'context/AgentRoleContext';
+import { useAgentRole } from '../../context/AgentRoleContext';
+import { useSession } from '../../context/SupabaseSessionProvider';
 
 export default function AlerteAgentDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const { roleAgent } = useAgentRole(); // 🟨 Rôle SPP/PATS
+  const { session } = useSession();
+  const { roleAgent } = useAgentRole(); // Rôle SPP/PATS
 
   const [alerte, setAlerte] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function AlerteAgentDetail() {
   const [viewerImage, setViewerImage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!roleAgent) return; // On attend que le rôle soit chargé
+    if (!session?.user || !roleAgent) return; // on attend session + rôle
 
     const loadAlerte = async () => {
       setLoading(true);
@@ -37,7 +39,7 @@ export default function AlerteAgentDetail() {
         .single();
 
       if (!error && data) {
-        // 🟥 SÉCURITÉ : empêcher un SPP d'ouvrir une alerte PATS (et inversement)
+        // Sécurité : empêcher un SPP d'ouvrir une alerte PATS (et inversement)
         if (data.role_agent !== roleAgent) {
           alert("Vous n'avez pas accès à cette alerte.");
           router.back();
@@ -51,7 +53,7 @@ export default function AlerteAgentDetail() {
     };
 
     loadAlerte();
-  }, [id, roleAgent]);
+  }, [id, session, roleAgent]);
 
   const badge = (statut: string) => {
     const styles: any = {
@@ -93,7 +95,6 @@ export default function AlerteAgentDetail() {
   return (
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
-        
         {/* RETOUR */}
         <Pressable onPress={() => router.back()} style={{ marginBottom: 15 }}>
           <Text style={{ color: '#007AFF' }}>← Retour</Text>
@@ -128,7 +129,7 @@ export default function AlerteAgentDetail() {
 
           <Text style={{ fontWeight: '600' }}>Créée le :</Text>
           <Text style={{ marginBottom: 10 }}>
-            {new Date(alerte.created_at).toLocaleString('fr-FR')}
+            {new Date(alerte.inserted_at).toLocaleString('fr-FR')}
           </Text>
         </View>
 
@@ -137,7 +138,7 @@ export default function AlerteAgentDetail() {
           Pièces jointes
         </Text>
 
-        {alerte.attachments?.length === 0 && (
+        {(!alerte.attachments || alerte.attachments.length === 0) && (
           <Text style={{ color: '#666' }}>Aucune pièce jointe.</Text>
         )}
 
@@ -154,12 +155,15 @@ export default function AlerteAgentDetail() {
             }}
           >
             <Text>
-              {att.type === 'image' ? '🖼️' : att.type === 'video' ? '🎥' : '📄'}{' '}
+              {att.type === 'image'
+                ? '🖼️'
+                : att.type === 'video'
+                ? '🎥'
+                : '📄'}{' '}
               {att.name}
             </Text>
           </Pressable>
         ))}
-
       </ScrollView>
 
       {/* VIEWER IMAGE */}
@@ -176,7 +180,8 @@ export default function AlerteAgentDetail() {
           {viewerImage && (
             <Image
               source={{ uri: viewerImage }}
-              style={{ width: '90%', height: '70%', resizeMode: 'contain' }}
+              style={{ width: '90%', height: '70%' }}
+              resizeMode="contain"
             />
           )}
         </Pressable>

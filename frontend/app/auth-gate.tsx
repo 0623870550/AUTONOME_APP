@@ -1,58 +1,77 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 
 import LoaderAutonome from 'components/ui/LoaderAutonome';
-import { useSession } from 'context/SupabaseSessionProvider';
 import { supabase } from 'lib/supabase';
-
-import { useAgentRole } from 'context/AgentRoleContext';
+import { useAgentRole } from '../context/AgentRoleContext';
+import { useSession } from '../context/SupabaseSessionProvider';
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const session = useSession();
-
+  const segments = useSegments();
+  const navigationState = useRootNavigationState();
+  const { session } = useSession();
   const { setRoleAgent } = useAgentRole();
 
-  const [mounted, setMounted] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
 
+  // 1) Chargement du rôle dès qu'on a la session
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
     if (session === undefined) return;
 
     if (session === null) {
-      router.replace('/signup');
+      setRoleAgent(null);
+      setLoadingRoles(false);
       return;
     }
 
+    const loadRoles = async () => {
+      const { data, error } = await supabase
+        .from('agents')
+        .select('role_agent')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!error && data) {
+        setRoleAgent(data.role_agent);
+      } else {
+        console.log('Erreur chargement rôle agent :', error);
+        setRoleAgent(null);
+      }
+      setLoadingRoles(false);
+    };
+
     loadRoles();
-  }, [session, mounted]);
+  }, [session, setRoleAgent]);
 
-  const loadRoles = async () => {
-    if (!session?.user) return;
+  // 2) Redirection quand le router est prêt et que le chargement est fini
+  useEffect(() => {
+    if (!navigationState?.key) return; // Attendre que le routeur soit monté
+    if (session === undefined || loadingRoles) return;
 
-    const { data, error } = await supabase
-      .from('agents')
-      .select('role_agent')
-      .eq('id', session.user.id)
-      .single();
+    const inAppGroup = segments[0] === '(app)';
+    const inDashboardsGroup = segments[0] === '(dashboards)';
+    const isProtected = inAppGroup || inDashboardsGroup;
 
-    if (!error && data) {
-      setRoleAgent(data.role_agent);
-    } else {
-      console.log("Erreur chargement rôle agent :", error);
+    if (session === null && isProtected) {
+      router.replace('/login');
+    } else if (session && !isProtected) {
+      // Redirection après login réussi (vers l'entrée de l'app)
+      router.replace('/(app)/tabs');
     }
+  }, [session, loadingRoles, segments, navigationState, router]);
 
-    setLoadingRoles(false);
-  };
+  const showLoader = session === undefined || loadingRoles;
 
-  if (!mounted || session === undefined || session === null || loadingRoles) {
-    return <LoaderAutonome />;
-  }
-
-  return <>{children}</>;
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {showLoader && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <LoaderAutonome />
+        </View>
+      )}
+    </View>
+  );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { USE_NATIVE_DRIVER } from '../../lib/platform';
 
 export default function LoaderAutonome() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -12,12 +13,12 @@ export default function LoaderAutonome() {
         Animated.timing(pulseAnim, {
           toValue: 1.15,
           duration: 700,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 700,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     ).start();
@@ -28,12 +29,12 @@ export default function LoaderAutonome() {
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(textOpacity, {
           toValue: 0.4,
           duration: 800,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ])
     ).start();
@@ -69,10 +70,10 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 70,
     backgroundColor: '#F8FF00',
-    shadowColor: '#F8FF00',
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 0 },
+    ...Platform.select({
+      web: { boxShadow: '0px 0px 15px rgba(248, 255, 0, 0.6)' },
+      default: { shadowColor: '#F8FF00', shadowOpacity: 0.6, shadowRadius: 15, shadowOffset: { width: 0, height: 0 } },
+    }),
     marginBottom: 30,
   },
   text: {

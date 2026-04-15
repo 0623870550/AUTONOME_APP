@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/assets/logo_autonome_sdmis.png" width="180" />
+  <img src="frontend/assets/logo_autonome_sdmis2.png" width="180" />
 </p>
 
 # 🚒 AUTONOME_APP  

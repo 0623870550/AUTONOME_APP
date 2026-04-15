@@ -6,7 +6,7 @@ import {
   TextInput,
   View
 } from 'react-native';
-import PageContainer from '../../components/PageContainer';
+import PageContainer from '../../../components/PageContainer';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthGate from 'app/auth-gate';

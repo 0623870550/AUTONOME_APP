@@ -27,7 +27,11 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
 
   // Icône roue dentée pour l’onglet Compte
-  'gearshape.fill': 'settings'
+  'gearshape.fill': 'settings',
+  'magnifyingglass': 'search',
+  'warning': 'warning',
+  'list.bullet': 'list',
+  'chart.pie.fill': 'poll'
 } as IconMapping;
 
 /**

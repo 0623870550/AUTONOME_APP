@@ -5,6 +5,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Platform,
   RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -125,10 +126,14 @@ export default function DelegueScreen() {
                   borderWidth: 1,
                   borderColor: '#eee',
                   backgroundColor: '#FFFFFF',
-                  shadowColor: '#000',
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  shadowOffset: { width: 0, height: 2 },
+                  ...(Platform.OS === 'web'
+                    ? { boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)' }
+                    : {
+                        shadowColor: '#000',
+                        shadowOpacity: 0.05,
+                        shadowRadius: 4,
+                        shadowOffset: { width: 0, height: 2 },
+                      }),
                 }}
                 onPress={() => router.push(`/delegue-detail?id=${a.id}`)}
               >

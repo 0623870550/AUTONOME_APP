@@ -1,6 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-export default function HeaderAuth({ title }) {
+type HeaderAuthProps = {
+  title: string;
+};
+
+export default function HeaderAuth({ title }: HeaderAuthProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.logo}>AUTONOME SDMIS</Text>

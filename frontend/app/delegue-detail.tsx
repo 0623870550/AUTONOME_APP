@@ -9,6 +9,7 @@ import {
   Image,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
 import { supabase } from 'lib/supabase';
 import PageContainer from 'components/PageContainer';
@@ -247,11 +248,15 @@ export default function DelegueDetail() {
             backgroundColor: '#fff',
             padding: 15,
             borderRadius: 10,
-            shadowColor: '#000',
-            shadowOpacity: 0.08,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 3,
+            ...(Platform.OS === 'web'
+              ? { boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.08)' }
+              : {
+                  shadowColor: '#000',
+                  shadowOpacity: 0.08,
+                  shadowRadius: 6,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 3,
+                }),
           }}
         >
           {/* Icône + titre */}

@@ -1,39 +1,21 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, View } from 'react-native';
+import { Animated, Platform, View } from 'react-native';
+
+import { USE_NATIVE_DRIVER } from '../../../lib/platform';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAlert } from 'app/context/AlertContext';
 import { IconSymbol } from 'components/ui/icon-symbol';
-import { supabase } from 'lib/supabase';
+import { useAgentRole } from '../../../context/AgentRoleContext';
+import { useAlert } from '../../../context/AlertContext';
 
 export default function TabLayout() {
   const { alert } = useAlert();
+  const { roleAgent } = useAgentRole(); // 🔥 rôle déjà chargé par AuthGate
 
   const [hasSurveyNotification, setHasSurveyNotification] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadRole = async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const userId = userData?.user?.id;
-
-      if (!userId) return;
-
-      const { data: profile, error } = await supabase
-        .from('agents')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (!error && profile) {
-        setRole(profile.role);
-      }
-    };
-
-    loadRole();
-  }, []);
-
+  // ✅ Hooks TOUJOURS appelés avant tout return conditionnel
   useEffect(() => {
     const checkSurveyStatus = async () => {
       const activeSurveyId = '2025-conditions-travail';
@@ -53,13 +35,18 @@ export default function TabLayout() {
     checkSurveyStatus();
   }, []);
 
+  // 🔥 Guard APRÈS tous les hooks
+  if (roleAgent === undefined) {
+    return null; // on attend que AuthGate ait fini de charger le rôle
+  }
+
   const IconWrapper = ({
     name,
     focused,
     isMobilisation,
     hasNotification,
   }: {
-    name: any; // correction ici
+    name: any;
     focused: boolean;
     isMobilisation?: boolean;
     hasNotification?: boolean;
@@ -74,12 +61,12 @@ export default function TabLayout() {
             Animated.timing(flashAnim, {
               toValue: 0.3,
               duration: 200,
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
             Animated.timing(flashAnim, {
               toValue: 1,
               duration: 200,
-              useNativeDriver: true,
+              useNativeDriver: USE_NATIVE_DRIVER,
             }),
           ])
         ).start();
@@ -96,12 +83,12 @@ export default function TabLayout() {
         Animated.timing(pulseAnim, {
           toValue: 1.15,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_DRIVER,
         }),
       ]).start();
     }, [focused]);
@@ -117,11 +104,15 @@ export default function TabLayout() {
           borderRadius: 19,
           alignItems: 'center',
           justifyContent: 'center',
-          shadowColor: focused ? '#F8FF00' : 'transparent',
-          shadowOpacity: focused ? 0.8 : 0,
-          shadowRadius: focused ? 12 : 0,
-          shadowOffset: { width: 0, height: 0 },
-          elevation: focused ? 10 : 0,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: focused ? '0px 0px 12px rgba(0, 122, 255, 0.8)' : 'none' }
+            : {
+              shadowColor: focused ? '#007AFF' : 'transparent',
+              shadowOpacity: focused ? 0.8 : 0,
+              shadowRadius: focused ? 12 : 0,
+              shadowOffset: { width: 0, height: 0 },
+              elevation: focused ? 10 : 0,
+            }),
         }}
       >
         <IconSymbol size={18} name={name} color="#000" />
@@ -160,7 +151,69 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* … reste du code identique … */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Accueil',
+          tabBarIcon: ({ focused }) => <IconWrapper name="house.fill" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explorer"
+        options={{
+          title: 'Explorer',
+          tabBarIcon: ({ focused }) => <IconWrapper name="magnifyingglass" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="alerte"
+        options={{
+          title: 'Alerte',
+          tabBarIcon: ({ focused }) => <IconWrapper name="warning" focused={focused} isMobilisation />,
+        }}
+      />
+      <Tabs.Screen
+        name="mes-alertes"
+        options={{
+          title: 'Les Alertes',
+          tabBarIcon: ({ focused }) => <IconWrapper name="list.bullet" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="sondages"
+        options={{
+          title: 'Sondages',
+          tabBarIcon: ({ focused }) => <IconWrapper name="chart.pie.fill" focused={focused} hasNotification={hasSurveyNotification} />,
+        }}
+      />
+      <Tabs.Screen
+        name="delegue"
+        options={{
+          title: 'Délégués',
+          tabBarIcon: ({ focused }) => <IconWrapper name="person.2.fill" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="contribuer"
+        options={{
+          title: 'Contribuer',
+          tabBarIcon: ({ focused }) => <IconWrapper name="lightbulb.fill" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="contact"
+        options={{
+          title: 'Contact',
+          tabBarIcon: ({ focused }) => <IconWrapper name="paperplane.fill" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="compte"
+        options={{
+          title: 'Compte',
+          tabBarIcon: ({ focused }) => <IconWrapper name="gearshape.fill" focused={focused} />,
+        }}
+      />
     </Tabs>
   );
 }

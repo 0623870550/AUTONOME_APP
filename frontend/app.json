@@ -5,15 +5,13 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "autonome",
-    "icon": "./assets/images/icon.png",
-    "userInterfaceStyle": "light",
-
-    "entryPoint": "./app/_layout.tsx",
+    "icon": "./app/assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
 
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./app/assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#F8FF00"
     },
 
     "assetBundlePatterns": ["**/*"],
@@ -29,8 +27,8 @@
     "android": {
       "package": "com.autonome.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#000000"
+        "foregroundImage": "./app/assets/images/android-icon-foreground.png",
+        "backgroundColor": "#F8FF00"
       },
       "intentFilters": [
         {
@@ -48,7 +46,7 @@
     },
 
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./app/assets/images/favicon.png"
     },
 
     "plugins": [

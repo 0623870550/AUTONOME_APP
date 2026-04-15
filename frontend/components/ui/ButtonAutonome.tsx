@@ -1,7 +1,17 @@
-import { Pressable, Text, StyleSheet, Animated } from 'react-native';
 import { useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text } from 'react-native';
 
-export default function ButtonAutonome({ title, onPress, disabled }) {
+type ButtonAutonomeProps = {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+};
+
+export default function ButtonAutonome({
+  title,
+  onPress,
+  disabled = false,
+}: ButtonAutonomeProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const animate = () => {

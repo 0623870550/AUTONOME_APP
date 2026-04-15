@@ -1,47 +1,50 @@
-import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
-import { supabase } from 'lib/supabase';
-import { useRouter } from 'expo-router';
 import PageContainer from 'components/PageContainer';
-import { useAgentRole } from 'context/AgentRoleContext';
-import { useAgentPermission } from 'context/AgentPermissionContext';
+import { useRouter } from 'expo-router';
+import { supabase } from 'lib/supabase';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+
+import { useAgentPermission } from '../context/AgentPermissionContext';
+import { useAgentRole } from '../context/AgentRoleContext';
+import { useSession } from '../context/SupabaseSessionProvider';
 
 export default function ToutesAlertesScreen() {
   const router = useRouter();
 
-  const { roleAgent } = useAgentRole();          // SPP / PATS
-  const { role } = useAgentPermission();         // agent / delegue / admin
+  const { session } = useSession();
+  const { roleAgent } = useAgentRole();
+  const { role } = useAgentPermission();
 
   const [alertes, setAlertes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!roleAgent || !role) return; // On attend les deux rôles
+    if (!session?.user || !roleAgent || !role) return;
 
     const loadAlertes = async () => {
       setLoading(true);
 
-      // Base query
       let query = supabase
         .from('alerte')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('inserted_at', { ascending: false });
 
-      // 🟨 Agents → filtrage SPP/PATS
       if (role === 'agent') {
         query = query.eq('role_agent', roleAgent);
       }
 
-      // 🟦 Délégués & Admins → accès total (pas de filtrage)
-
       const { data, error } = await query;
 
-      if (!error) setAlertes(data || []);
+      if (error) {
+        console.error('Erreur supabase loadAlertes:', error);
+      } else {
+        setAlertes(data || []);
+      }
       setLoading(false);
     };
 
     loadAlertes();
-  }, [roleAgent, role]);
+  }, [session, roleAgent, role]);
 
   const badge = (statut: string) => {
     const styles: any = {
@@ -53,14 +56,19 @@ export default function ToutesAlertesScreen() {
 
     const s = styles[statut] || styles['nouvelle'];
 
-    return (
-      <Text style={{ color: s.color, fontWeight: 'bold' }}>
-        {s.label}
-      </Text>
-    );
+    return <Text style={{ color: s.color, fontWeight: 'bold' }}>{s.label}</Text>;
   };
 
-  if (loading || !roleAgent || !role) {
+  if (loading || !session?.user || !roleAgent || !role) {
+    if (typeof window !== 'undefined') {
+      console.log('[ToutesAlertes] Blocage sur le loader :', {
+        loading,
+        hasSession: !!session?.user,
+        roleAgent,
+        role
+      });
+    }
+
     return (
       <PageContainer>
         <View style={{ marginTop: 40, alignItems: 'center' }}>
@@ -105,7 +113,7 @@ export default function ToutesAlertesScreen() {
             <Text style={{ marginTop: 4 }}>{badge(a.statut)}</Text>
 
             <Text style={{ marginTop: 4, color: '#666' }}>
-              {new Date(a.created_at).toLocaleString('fr-FR')}
+              {new Date(a.inserted_at).toLocaleString('fr-FR')}
             </Text>
           </Pressable>
         ))}

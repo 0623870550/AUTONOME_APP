@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { supabase } from 'lib/supabase';
+import { USE_NATIVE_DRIVER } from '../lib/platform';
 import { useRouter } from 'expo-router';
 
 import LoaderAutonome from 'components/ui/LoaderAutonome';
@@ -39,11 +40,11 @@ export default function Signup() {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
 
@@ -268,9 +269,10 @@ const styles = StyleSheet.create({
   },
   validInput: {
     borderColor: '#F8FF00',
-    shadowColor: '#F8FF00',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    ...Platform.select({
+      web: { boxShadow: '0px 0px 6px rgba(248, 255, 0, 0.4)' },
+      default: { shadowColor: '#F8FF00', shadowOpacity: 0.4, shadowRadius: 6 },
+    }),
   },
   invalidInput: {
     borderColor: '#FF4444',

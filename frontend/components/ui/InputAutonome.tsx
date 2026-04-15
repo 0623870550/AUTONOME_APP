@@ -1,4 +1,12 @@
-import { View, TextInput, StyleSheet } from 'react-native';
+import { StyleProp, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+
+type InputAutonomeProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  secureTextEntry?: boolean;
+  style?: StyleProp<ViewStyle>;
+};
 
 export default function InputAutonome({
   value,
@@ -6,7 +14,7 @@ export default function InputAutonome({
   placeholder,
   secureTextEntry = false,
   style,
-}) {
+}: InputAutonomeProps) {
   return (
     <View style={[styles.container, style]}>
       <TextInput
