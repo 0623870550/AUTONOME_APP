@@ -11,7 +11,7 @@ import { SupabaseSessionProvider } from '../context/SupabaseSessionProvider';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useColorScheme } from 'hooks/use-color-scheme';
 
-import AuthGate from './auth-gate';
+import AuthGate from './_auth-gate';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

@@ -77,7 +77,7 @@ export default function Login() {
       return;
     }
 
-    router.replace('/(app)/tabs');
+    router.replace('/');
   };
 
   const handleResetPassword = async () => {

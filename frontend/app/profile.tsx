@@ -77,8 +77,11 @@ export default function Profile() {
         <Text style={styles.label}>Nom</Text>
         <Text style={styles.value}>{agent.nom}</Text>
 
-        <Text style={styles.label}>Type d’agent</Text>
-        <Text style={styles.value}>{agent.type_agent}</Text>
+        <Text style={styles.label}>Statut & Rôle</Text>
+        <Text style={[styles.value, { color: '#F8FF00' }]}>
+          {agent.role === 'admin' ? '🛡️ Administrateur' : agent.role === 'delegue' ? '🎖️ Délégué' : '👤 Agent'}
+          {` (${agent.role_agent || 'SDMIS'})`}
+        </Text>
 
         <Text style={styles.label}>Email</Text>
         <Text style={styles.value}>{agent.email}</Text>

@@ -50,15 +50,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (!navigationState?.key) return; // Attendre que le routeur soit monté
     if (session === undefined || loadingRoles) return;
 
-    const inAppGroup = segments[0] === '(app)';
-    const inDashboardsGroup = segments[0] === '(dashboards)';
-    const isProtected = inAppGroup || inDashboardsGroup;
+    const publicRoutes = ['login', 'signup', 'forgot-password', 'reset-password'];
+    const currentRoute = segments[0] || '';
+    
+    // Une route est protégée si elle n'est pas dans la liste publique
+    const isProtected = !publicRoutes.includes(currentRoute);
 
-    if (session === null && isProtected) {
+    if (!session && isProtected) {
+      // Redirection vers login si non connecté sur une route protégée
       router.replace('/login');
     } else if (session && !isProtected) {
-      // Redirection après login réussi (vers l'entrée de l'app)
-      router.replace('/(app)/tabs');
+      // Redirection après login réussi (seulement si on est sur une page non protégée comme /login)
+      router.replace('/');
     }
   }, [session, loadingRoles, segments, navigationState, router]);
 

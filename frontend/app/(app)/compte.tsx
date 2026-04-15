@@ -1,8 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
-import { supabase } from 'lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import PageContainer from '../../../components/PageContainer';
+import PageContainer from '../../components/PageContainer';
 
 export default function Compte() {
   const [user, setUser] = useState<any>(null);

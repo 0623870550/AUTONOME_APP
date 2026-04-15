@@ -1,12 +1,12 @@
-import PageContainer from 'components/PageContainer';
+import PageContainer from '../../components/PageContainer';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 
-import { useAgentPermission } from '../../../context/AgentPermissionContext';
-import { useAgentRole } from '../../../context/AgentRoleContext';
-import { useSession } from '../../../context/SupabaseSessionProvider';
+import { useAgentPermission } from '../../context/AgentPermissionContext';
+import { useAgentRole } from '../../context/AgentRoleContext';
+import { useSession } from '../../context/SupabaseSessionProvider';
 
 export default function MesAlertesScreen() {
   const router = useRouter();

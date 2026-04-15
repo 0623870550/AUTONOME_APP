@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import PageContainer from 'components/PageContainer';
+import PageContainer from '../../components/PageContainer';
 
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -29,8 +29,8 @@ import {
 } from 'react-native-gesture-handler';
 
 import { useRouter } from 'expo-router';
-import { supabase } from 'lib/supabase';
-import { useAgentRole } from '../../../context/AgentRoleContext';
+import { supabase } from '../../lib/supabase';
+import { useAgentRole } from '../../context/AgentRoleContext';
 
 /* ---------------------------------------------
    TYPES
