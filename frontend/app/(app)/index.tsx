@@ -40,6 +40,9 @@ export default function Page() {
 
       if (!error) {
         setAgent(data);
+        // (Redirection automatique désactivée selon la demande)
+
+
         // Fetch News
         const { data: newsData } = await supabase
           .from('actualites')
@@ -151,15 +154,6 @@ export default function Page() {
           </View>
         </View>
 
-        {/* BOUTON ESPACE ADMIN (SI ADMIN) */}
-        {agent.role === 'admin' && (
-          <TouchableOpacity 
-            style={styles.adminSpecialBtn}
-            onPress={() => router.push('/(dashboards)/AdminDashboard')}
-          >
-            <Text style={styles.adminSpecialText}>🛡️ ACCÉDER À L'ESPACE ADMIN</Text>
-          </TouchableOpacity>
-        )}
 
         {/* ACTIONS RAPIDES */}
         <Text style={styles.sectionTitle}>Accès rapide</Text>
@@ -184,6 +178,8 @@ export default function Page() {
           </TouchableOpacity>
         </View>
 
+
+
         {/* SECTION ADHÉSION */}
         <TouchableOpacity 
           style={styles.adhesionCard} 
@@ -205,10 +201,32 @@ export default function Page() {
             <TouchableOpacity 
               key={item.id} 
               style={styles.webCard} 
-              onPress={() => Alert.alert(item.title, item.content)}
+              onPress={() => {
+                if (item.image_url) {
+                  Alert.alert(
+                    item.title,
+                    item.content,
+                    [
+                      { text: 'Fermer', style: 'cancel' },
+                      { 
+                        text: 'Ouvrir la pièce jointe', 
+                        onPress: () => openLink(item.image_url)
+                      }
+                    ]
+                  );
+                } else {
+                  Alert.alert(item.title, item.content);
+                }
+              }}
             >
               {item.image_url ? (
-                <Image source={{ uri: item.image_url }} style={styles.newsThumb} />
+                item.image_url.match(/\.(jpeg|jpg|gif|png)$/i) ? (
+                  <Image source={{ uri: item.image_url }} style={styles.newsThumb} />
+                ) : (
+                  <View style={[styles.newsThumb, { backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 24 }}>📎</Text>
+                  </View>
+                )
               ) : (
                 <Text style={styles.webIcon}>📢</Text>
               )}
@@ -313,24 +331,6 @@ const styles = StyleSheet.create({
     color: '#FFD500',
     fontSize: 13,
     fontWeight: '600',
-  },
-  adminSpecialBtn: {
-    backgroundColor: '#F8FF00',
-    padding: 18,
-    borderRadius: 16,
-    marginBottom: 30,
-    alignItems: 'center',
-    shadowColor: '#F8FF00',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  adminSpecialText: {
-    color: '#000',
-    fontWeight: '900',
-    fontSize: 15,
-    letterSpacing: 1,
   },
   sectionTitle: {
     color: '#fff',

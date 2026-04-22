@@ -27,15 +27,8 @@ export default function MesAlertesScreen() {
       let query = supabase
         .from('alerte')
         .select('*')
-        .order('inserted_at', { ascending: false });
-
-      if (role === 'agent') {
-        query = query.eq('created_by', session.user.id);
-      }
-
-      if (role === 'delegue') {
-        query = query.eq('role_agent', roleAgent);
-      }
+        .order('inserted_at', { ascending: false })
+        .eq('agent_id', session.user.id);
 
       const { data, error } = await query;
 
@@ -78,9 +71,17 @@ export default function MesAlertesScreen() {
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
         
+        {/* BOUTON RETOUR */}
+        <Pressable 
+          onPress={() => router.push('/')} 
+          style={{ backgroundColor: '#333', alignSelf: 'flex-start', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginBottom: 20 }}
+        >
+          <Text style={{ color: '#F8FF00', fontWeight: 'bold' }}>← Retour</Text>
+        </Pressable>
+
         {/* EN-TÊTE */}
         <Text style={{ color: '#F8FF00', fontSize: 26, fontWeight: '700', marginBottom: 6 }}>
-          Les Alertes
+          Mes Alertes
         </Text>
         <Text style={{ color: '#ccc', fontSize: 14, marginBottom: 25 }}>
           {role === 'delegue' 

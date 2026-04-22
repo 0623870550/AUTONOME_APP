@@ -1,30 +1,22 @@
-import { StyleProp, StyleSheet, TextInput, View, ViewStyle } from 'react-native';
+import { StyleProp, StyleSheet, TextInput, View, ViewStyle, TextInputProps } from 'react-native';
 
+// L'astuce est le "& TextInputProps" : 
+// On dit "Prends mon style de View, ET accepte TOUTES les options d'un TextInput classique"
 type InputAutonomeProps = {
-  value: string;
-  onChangeText: (text: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
   style?: StyleProp<ViewStyle>;
-};
+} & TextInputProps;
 
 export default function InputAutonome({
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry = false,
   style,
+  ...props // "...props" capture tout (value, onChangeText, multiline, keyboardType...)
 }: InputAutonomeProps) {
   return (
     <View style={[styles.container, style]}>
       <TextInput
         style={styles.input}
-        placeholder={placeholder}
         placeholderTextColor="#777"
-        autoCapitalize="none"
-        secureTextEntry={secureTextEntry}
-        value={value}
-        onChangeText={onChangeText}
+        autoCapitalize="none" // Valeur par défaut
+        {...props} // On déverse toutes les options capturées directement dans le champ !
       />
     </View>
   );

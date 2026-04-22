@@ -33,14 +33,35 @@ export default function ToutesAlertesScreen() {
         query = query.eq('role_agent', roleAgent);
       }
 
-      const { data, error } = await query;
+      try {
+        const { data, error } = await query;
 
-      if (error) {
-        console.error('Erreur supabase loadAlertes:', error);
-      } else {
-        setAlertes(data || []);
+        if (error) {
+          console.error('Erreur supabase loadAlertes:', error);
+        } else if (data) {
+          // On récupère manuellement les agents pour éviter l'erreur de jointure
+          // On le fait même pour les alertes anonymes, car l'Admin doit voir l'identité
+          const agentIds = data.map(a => a.agent_id || a.created_by).filter(Boolean);
+          if (agentIds.length > 0) {
+            const { data: agentsData } = await supabase
+              .from('agents')
+              .select('id, nom, prenom')
+              .in('id', agentIds);
+              
+            if (agentsData) {
+              data.forEach(a => {
+                const idToFind = a.agent_id || a.created_by;
+                a.agents = agentsData.find(ag => ag.id === idToFind) || null;
+              });
+            }
+          }
+          setAlertes(data);
+        }
+      } catch (err) {
+        console.error('Erreur inattendue loadAlertes:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadAlertes();
@@ -82,6 +103,15 @@ export default function ToutesAlertesScreen() {
   return (
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
+        
+        {/* BOUTON RETOUR ADMIN */}
+        <Pressable 
+          onPress={() => router.push('/admin')} 
+          style={{ backgroundColor: '#333', alignSelf: 'flex-start', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, marginBottom: 20 }}
+        >
+          <Text style={{ color: '#F8FF00', fontWeight: 'bold' }}>← Retour Admin</Text>
+        </Pressable>
+
         <Text style={{ fontSize: 26, fontWeight: 'bold', marginBottom: 20 }}>
           📢 Toutes les alertes
         </Text>
@@ -107,7 +137,10 @@ export default function ToutesAlertesScreen() {
             <Text style={{ fontSize: 18, fontWeight: '600' }}>{a.type}</Text>
 
             <Text style={{ marginTop: 4 }}>
-              {a.anonyme ? '👤 Anonyme' : '👥 Agent identifié'}
+              {a.anonyme 
+                ? `👤 Anonyme (${a.agents?.prenom || ''} ${a.agents?.nom || 'Inconnu'})`
+                : `👥 ${a.agents?.prenom || ''} ${a.agents?.nom || 'Agent identifié'}`
+              }
             </Text>
 
             <Text style={{ marginTop: 4 }}>{badge(a.statut)}</Text>

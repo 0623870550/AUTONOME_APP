@@ -76,10 +76,27 @@ export default function Signup() {
 
     setLoading(true);
 
-    // 1️⃣ Création du compte Supabase Auth
+    // 🕵️ LE MOUCHARD EST ICI : On regarde ce qu'on envoie AVANT de l'envoyer
+    console.log("🕵️ DONNÉES ENVOYÉES :", {
+      email: email,
+      pseudo: pseudo,
+      prenom: prenom,
+      nom: nom,
+      type_agent: typeAgent
+    });
+
+    // 1️⃣ Création du compte Supabase Auth AVEC les métadonnées (Correction Supabase)
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
+      email: email,
+      password: password,
+      options: {
+        data: {
+          pseudo: pseudo,
+          prenom: prenom,
+          nom: nom,
+          type_agent: typeAgent,
+        }
+      }
     });
 
     if (authError || !authData.user) {
@@ -90,16 +107,16 @@ export default function Signup() {
 
     // 2️⃣ Appel à la Edge Function pour créer l'agent côté serveur
     await fetch("https://cnskvexluuaxdxsquwzc.supabase.co/functions/v1/smart-service", {
-  method: "POST",
-  mode: "cors",   // 🔥 AJOUT ICI
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    user_id: authData.user.id,
-    email,
-  }),
-});
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_id: authData.user.id,
+        email,
+      }),
+    });
 
     // 3️⃣ Fin du processus
     setLoading(false);
@@ -117,9 +134,16 @@ export default function Signup() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      /* Correction clavier : 'padding' pour iOS, mais par défaut/undefined pour Android qui gère ça souvent mieux seul */
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView
+        /* contentContainerStyle flexGrow permet à la ScrollView de remplir l'écran, paddingBottom donne de la marge au clavier */
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 50 }}
+        /* handled empêche le clavier de fermer et l'écran de sauter quand on tape */
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.container}>
           <HeaderAuth title="Créer un compte" />
 
@@ -128,6 +152,8 @@ export default function Signup() {
               placeholder="Identifiant / Pseudo"
               value={pseudo}
               onChangeText={setPseudo}
+              multiline={false}
+              autoCapitalize="none"
               style={[pseudo && styles.validInput]}
             />
 
@@ -135,6 +161,7 @@ export default function Signup() {
               placeholder="Prénom"
               value={prenom}
               onChangeText={setPrenom}
+              multiline={false}
               style={[prenom && styles.validInput]}
             />
 
@@ -142,6 +169,7 @@ export default function Signup() {
               placeholder="Nom"
               value={nom}
               onChangeText={setNom}
+              multiline={false}
               style={[nom && styles.validInput]}
             />
 
@@ -166,6 +194,9 @@ export default function Signup() {
               placeholder="prenom.nom@sdmis.fr"
               value={email}
               onChangeText={setEmail}
+              multiline={false}
+              autoCapitalize="none"
+              keyboardType="email-address"
               style={[
                 email && isValidSdmisEmail(email) && styles.validInput,
                 email && !isValidSdmisEmail(email) && styles.invalidInput,
@@ -177,6 +208,8 @@ export default function Signup() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              multiline={false}
+              autoCapitalize="none"
               style={[
                 password && passwordStrength !== 'weak' && styles.validInput,
                 password && passwordStrength === 'weak' && styles.invalidInput,
@@ -188,13 +221,15 @@ export default function Signup() {
               value={passwordConfirm}
               onChangeText={setPasswordConfirm}
               secureTextEntry={!showPassword}
+              multiline={false}
+              autoCapitalize="none"
               style={[
                 passwordConfirm &&
-                  passwordConfirm === password &&
-                  styles.validInput,
+                passwordConfirm === password &&
+                styles.validInput,
                 passwordConfirm &&
-                  passwordConfirm !== password &&
-                  styles.invalidInput,
+                passwordConfirm !== password &&
+                styles.invalidInput,
               ]}
             />
           </Animated.View>

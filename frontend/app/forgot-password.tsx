@@ -48,9 +48,8 @@ export default function ForgotPassword() {
 
     setLoading(true);
 
-    // 🔥 VERSION MODIFIÉE AVEC REDIRECT URL VERCEL
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://autonome-link.vercel.app",
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'autonome://auth/callback',
     });
 
     setLoading(false);
@@ -61,11 +60,11 @@ export default function ForgotPassword() {
     }
 
     Alert.alert(
-      'Email envoyé',
-      'Un lien de réinitialisation vous a été envoyé sur votre adresse SDMIS.'
+      'Email envoyé ✅',
+      'Un lien de réinitialisation vous a été envoyé. Cliquez dessus depuis votre téléphone pour définir un nouveau mot de passe.',
+      [{ text: 'OK', onPress: () => router.replace('/login') }]
     );
 
-    router.replace('/login');
   };
 
   if (loading) return <LoaderAutonome />;

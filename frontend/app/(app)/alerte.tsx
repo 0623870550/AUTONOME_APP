@@ -458,19 +458,7 @@ const pickDocument = async () => {
           </Pressable>
         ))}
 
-        {/* BOUTON MES ALERTES */}
-        <Pressable
-          onPress={() => router.push('/mes-alertes')}
-          style={{
-            marginTop: 10,
-            marginBottom: 10,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#007AFF', fontSize: 16 }}>
-            🔎 Voir les alertes
-          </Text>
-        </Pressable>
+
 
         {/* BOUTON DECLARER */}
         <GestureDetector gesture={gesture}>

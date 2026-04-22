@@ -14,9 +14,9 @@ export default function AuthCallback() {
     const refresh_token = params.refresh_token as string | undefined;
     const type = params.type as string | undefined;
 
-    // Cas 1 : lien de confirmation Supabase (type=recovery)
+    // Cas 1 : lien de réinitialisation mot de passe (type=recovery)
     if (access_token && type === 'recovery') {
-      setStatus('➡️ Confirmation reçue, connexion en cours...');
+      setStatus('➡️ Lien valide, connexion en cours...');
 
       supabase.auth.setSession({
         access_token,
@@ -29,12 +29,13 @@ export default function AuthCallback() {
             return;
           }
 
-          setStatus('✅ Compte confirmé, redirection...');
-          router.replace('/(tabs)');
+          setStatus('✅ Redirigé vers la page de réinitialisation...');
+          router.replace('/reset-password');  // ← redirige vers le formulaire de nouveau MDP
         });
 
       return;
     }
+
 
     // Cas 2 : lien OAuth ou magic link (avec refresh_token)
     if (access_token && refresh_token) {

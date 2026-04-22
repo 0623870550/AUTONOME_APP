@@ -80,34 +80,6 @@ export default function Login() {
     router.replace('/');
   };
 
-  const handleResetPassword = async () => {
-    if (!email.trim() || !email.includes('@')) {
-      triggerShake();
-      Vibration.vibrate(40);
-      Alert.alert('Adresse invalide', 'Veuillez entrer une adresse email valide.');
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'autonome://auth/callback',
-    });
-
-    setLoading(false);
-
-    if (error) {
-      triggerShake();
-      Vibration.vibrate(60);
-      Alert.alert('Erreur', error.message);
-      return;
-    }
-
-    Alert.alert(
-      'Email envoyé',
-      'Un lien de réinitialisation a été envoyé à votre adresse.'
-    );
-  };
 
   if (loading) return <LoaderAutonome />;
 
@@ -163,7 +135,7 @@ export default function Login() {
             disabled={!emailValid || !passwordValid}
           />
 
-          <Pressable onPress={handleResetPassword} style={{ marginTop: 15 }}>
+          <Pressable onPress={() => router.push('/forgot-password')} style={{ marginTop: 15 }}>
             <Text style={{ color: '#F8FF00', textAlign: 'center' }}>
               Mot de passe oublié
             </Text>

@@ -7,23 +7,23 @@
     "scheme": "autonome",
     "icon": "./app/assets/images/icon.png",
     "userInterfaceStyle": "automatic",
-
     "splash": {
       "image": "./app/assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#F8FF00"
     },
-
-    "assetBundlePatterns": ["**/*"],
-
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.autonome.app",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["autonome"]
+        "LSApplicationQueriesSchemes": [
+          "autonome"
+        ]
       }
     },
-
     "android": {
       "package": "com.autonome.app",
       "adaptiveIcon": {
@@ -40,27 +40,27 @@
               "pathPrefix": "/callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
-
     "web": {
       "favicon": "./app/assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
-
     "extra": {
       "router": {},
       "eas": {
         "projectId": "632f422c-9276-440f-8cad-1049eefd1fad"
       }
     },
-
     "owner": "sasdmis"
   }
 }

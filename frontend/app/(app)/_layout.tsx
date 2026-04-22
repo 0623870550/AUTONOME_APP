@@ -6,6 +6,7 @@ import { useSession } from '../../context/SupabaseSessionProvider';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol } from '../../components/ui/icon-symbol';
 import { useAgentRole } from '../../context/AgentRoleContext';
+import { useAgentPermission } from '../../context/AgentPermissionContext';
 import { useAlert } from '../../context/AlertContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +14,7 @@ export default function AppLayout() {
   const { session } = useSession();
   const { alert } = useAlert();
   const { roleAgent } = useAgentRole();
+  const { role } = useAgentPermission();
   const router = useRouter();
 
   const [hasSurveyNotification, setHasSurveyNotification] = useState(false);
@@ -91,7 +93,6 @@ export default function AppLayout() {
         <Tabs.Screen name="delegue" options={{ title: 'Délégués' }} />
         <Tabs.Screen name="compte" options={{ title: 'Compte' }} />
         <Tabs.Screen name="contact" options={{ title: 'Contact' }} />
-        <Tabs.Screen name="mes-alertes" options={{ title: 'Mes Alertes' }} />
         <Tabs.Screen name="admin" options={{ title: 'Admin' }} />
       </Tabs>
 
@@ -112,8 +113,8 @@ export default function AppLayout() {
               <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
                 {[
                   { name: '🏠 Accueil', path: '/', icon: 'house.fill' },
-                  { name: '🛡️ Administration', path: '/admin', icon: 'shield.fill' },
-                  { name: '📝 Mes Alertes', path: '/mes-alertes', icon: 'list.bullet' },
+                  ...(role === 'admin' ? [{ name: '🛡️ Administration', path: '/admin', icon: 'shield.fill' }] : []),
+                  { name: '📝 Mes Alertes', path: '/alerte-agent', icon: 'list.bullet' },
                   { name: '📊 Sondages', path: '/sondages', icon: 'chart.pie.fill' },
                   { name: '🎖️ Vos Délégués', path: '/delegue', icon: 'person.2.fill' },
                   { name: '💡 Proposer', path: '/contribuer', icon: 'lightbulb.fill' },

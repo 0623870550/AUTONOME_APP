@@ -8,8 +8,11 @@ import {
   View,
   Switch,
   ActivityIndicator,
-  Alert as RNAlert
+  Alert,
+  Image,
+  Platform,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import PageContainer from '../../components/PageContainer';
 import { useAgentRole } from '../../context/AgentRoleContext';
 import { useSession } from '../../context/SupabaseSessionProvider';
@@ -33,25 +36,6 @@ interface Attachment {
 type ContributionType = 'idee' | 'solution' | 'besoin' | 'probleme' | 'retour' | 'suggestion';
 type ImpactLevel = 'faible' | 'modere' | 'fort';
 
-const formatSize = (bytes: number) => {
-  if (!bytes || bytes <= 0) return '—';
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
-};
-
-const detectType = (uri: string): AttachmentType => {
-  if (uri.match(/\.(jpg|jpeg|png|gif)$/i)) return 'image';
-  if (uri.match(/\.(mp4|mov|avi)$/i)) return 'video';
-  return 'document';
-};
-
-const iconForType = (type: AttachmentType) => {
-  if (type === 'image') return '🖼️';
-  if (type === 'video') return '🎥';
-  return '📄';
-};
-
 export default function Contribuer() {
   const router = useRouter();
   const { session } = useSession();
@@ -73,17 +57,10 @@ export default function Contribuer() {
     );
   };
 
-  const addAttachment = async (uri: string, name: string) => {
-    const info = await FileSystem.getInfoAsync(uri);
-    const size = info.exists && typeof info.size === 'number' ? info.size : 0;
-    const att: Attachment = {
-      id: Math.random().toString(36).substring(7),
-      uri,
-      name,
-      size,
-      type: detectType(uri),
-    };
-    setAttachments((prev) => [...prev, att]);
+  const uriToBlob = async (uri: string) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return blob;
   };
 
   const pickImage = async () => {
@@ -93,18 +70,91 @@ export default function Contribuer() {
       quality: 0.7,
     });
     if (!res.canceled) {
-      const asset = res.assets[0];
-      await addAttachment(asset.uri, asset.fileName || 'image.jpg');
+      setAttachments([{
+        id: 'img-' + Date.now(),
+        uri: res.assets[0].uri,
+        name: 'image.jpg',
+        size: 0,
+        type: 'image'
+      }]);
+    }
+  };
+
+  const pickVideo = async () => {
+    setShowAttachmentMenu(false);
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      quality: 0.7,
+    });
+    if (!res.canceled) {
+      setAttachments([{
+        id: 'vid-' + Date.now(),
+        uri: res.assets[0].uri,
+        name: 'video.mp4',
+        size: 0,
+        type: 'video'
+      }]);
+    }
+  };
+
+  const uploadMedia = async (uri: string, type: 'image' | 'video') => {
+    try {
+      const fileName = `${Date.now()}.${type === 'image' ? 'jpg' : 'mp4'}`;
+      const filePath = `${session?.user.id}/${fileName}`;
+
+      let fileBody;
+      if (Platform.OS === 'web') {
+        fileBody = await uriToBlob(uri);
+      } else {
+        const formData = new FormData();
+        const extension = type === 'image' ? 'jpg' : 'mp4';
+        formData.append('file', {
+          uri,
+          name: fileName,
+          type: type === 'image' ? 'image/jpeg' : 'video/mp4',
+        } as any);
+        fileBody = formData;
+      }
+
+      const { data, error } = await supabase.storage
+        .from('propositions')
+        .upload(filePath, fileBody, {
+          contentType: type === 'image' ? 'image/jpeg' : 'video/mp4',
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('propositions')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err) {
+      console.error('Upload error:', err);
+      return null;
     }
   };
 
   const handlePublish = async () => {
     if (!type || titre.trim().length < 3 || description.trim().length < 5) {
-      RNAlert.alert('Erreur', 'Veuillez remplir correctement les champs obligatoires.');
+      Alert.alert('Erreur', 'Veuillez remplir correctement les champs obligatoires.');
       return;
     }
 
     setLoading(true);
+
+    let imageUrl = null;
+    let videoUrl = null;
+
+    if (attachments.length > 0) {
+      const att = attachments[0];
+      const url = await uploadMedia(att.uri, att.type as any);
+      if (att.type === 'image') imageUrl = url;
+      else if (att.type === 'video') videoUrl = url;
+    }
+
     const { error } = await supabase.from('contributions').insert([
       {
         type,
@@ -115,15 +165,18 @@ export default function Contribuer() {
         role_agent: roleAgent,
         anonyme,
         created_by: session?.user.id,
+        image_url: imageUrl,
+        video_url: videoUrl,
+        votes_count: 0
       },
     ]);
 
     setLoading(false);
 
     if (error) {
-      RNAlert.alert('Erreur', error.message);
+      Alert.alert('Erreur', error.message);
     } else {
-      RNAlert.alert('Succès', 'Votre proposition a été publiée avec succès !');
+      Alert.alert('Succès', 'Votre proposition a été publiée avec succès !');
       setType(null);
       setTitre('');
       setDescription('');
@@ -251,6 +304,43 @@ export default function Contribuer() {
           ))}
         </View>
 
+        <Text style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>Média (optionnel)</Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+          <Pressable 
+            onPress={pickImage}
+            style={{ flex: 1, backgroundColor: '#111', padding: 15, borderRadius: 12, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#444' }}
+          >
+            <MaterialIcons name="photo" size={24} color="#F8FF00" />
+            <Text style={{ color: '#aaa', fontSize: 12, marginTop: 5 }}>Photo</Text>
+          </Pressable>
+          <Pressable 
+            onPress={pickVideo}
+            style={{ flex: 1, backgroundColor: '#111', padding: 15, borderRadius: 12, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#444' }}
+          >
+            <MaterialIcons name="videocam" size={24} color="#F8FF00" />
+            <Text style={{ color: '#aaa', fontSize: 12, marginTop: 5 }}>Vidéo</Text>
+          </Pressable>
+        </View>
+
+        {attachments.length > 0 && (
+          <View style={{ marginBottom: 20, backgroundColor: '#111', borderRadius: 12, overflow: 'hidden' }}>
+            {attachments[0].type === 'image' ? (
+              <Image source={{ uri: attachments[0].uri }} style={{ width: '100%', height: 150 }} />
+            ) : (
+              <View style={{ height: 150, alignItems: 'center', justifyContent: 'center', backgroundColor: '#222' }}>
+                <MaterialIcons name="videocam" size={40} color="#F8FF00" />
+                <Text style={{ color: '#fff', marginTop: 10 }}>Vidéo sélectionnée</Text>
+              </View>
+            )}
+            <Pressable 
+              onPress={() => setAttachments([])}
+              style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 5 }}
+            >
+              <MaterialIcons name="close" size={20} color="#fff" />
+            </Pressable>
+          </View>
+        )}
+
         <Text style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>Tags (optionnel)</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
           {['Opérationnel', 'Matériel', 'RH', 'Organisation', 'Sécurité', 'Formation'].map((tag) => (
@@ -301,4 +391,3 @@ export default function Contribuer() {
     </AuthGate>
   );
 }
-
