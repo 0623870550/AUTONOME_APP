@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
@@ -19,6 +20,7 @@ import AuthGate from '../_auth-gate';
 import { supabase } from '../../lib/supabase';
 import { useAgentRole } from '../../context/AgentRoleContext';
 import { useSession } from '../../context/SupabaseSessionProvider';
+import { useAgentPermission } from '../../context/AgentPermissionContext';
 import React from 'react';
 
 type ContributionType = 'idee' | 'solution' | 'besoin' | 'probleme' | 'retour' | 'suggestion';
@@ -37,12 +39,14 @@ interface Contribution {
   image_url?: string | null;
   video_url?: string | null;
   created_at: string;
+  status: 'pending' | 'validated' | 'rejected';
 }
 
 export default function Explorer() {
   const router = useRouter();
   const { session } = useSession();
   const { roleAgent } = useAgentRole();
+  const { role } = useAgentPermission();
 
   const [loading, setLoading] = useState(true);
   const [contributions, setContributions] = useState<Contribution[]>([]);
@@ -70,7 +74,16 @@ export default function Explorer() {
 
   const fetchContributions = async () => {
     setLoading(true);
-    let query = supabase.from('contributions').select('*');
+    
+    // Filtre pour les 90 derniers jours
+    const dateLimit = new Date();
+    dateLimit.setDate(dateLimit.getDate() - 90);
+    const isoLimit = dateLimit.toISOString();
+
+    let query = supabase.from('contributions')
+      .select('*')
+      .eq('status', 'validated')
+      .gte('created_at', isoLimit);
 
     if (activeTab === 'recentes') {
       query = query.order('created_at', { ascending: false });
@@ -100,6 +113,43 @@ export default function Explorer() {
       }
     }
     fetchContributions();
+  };
+
+  const handleDeleteContribution = async (id: string) => {
+    const item = contributions.find(c => c.id === id);
+    if (!item) return;
+
+    const confirmMsg = "Voulez-vous vraiment supprimer cette proposition définitivement ?";
+    
+    const proceed = Platform.OS === 'web' 
+      ? window.confirm(confirmMsg) 
+      : await new Promise((resolve) => {
+          Alert.alert("Suppression", confirmMsg, [
+            { text: "Annuler", style: "cancel", onPress: () => resolve(false) },
+            { text: "Supprimer", style: "destructive", onPress: () => resolve(true) }
+          ]);
+        });
+
+    if (proceed) {
+      // Nettoyage Storage (propositions)
+      const storage = supabase.storage.from('propositions');
+      
+      if (item.image_url) {
+        const filePath = item.image_url.split('/propositions/')[1];
+        if (filePath) await storage.remove([filePath]);
+      }
+      if (item.video_url) {
+        const filePath = item.video_url.split('/propositions/')[1];
+        if (filePath) await storage.remove([filePath]);
+      }
+
+      const { error } = await supabase.from('contributions').delete().eq('id', id);
+      if (error) {
+        Alert.alert("Erreur", "Impossible de supprimer la proposition.");
+      } else {
+        setContributions(prev => prev.filter(c => c.id !== id));
+      }
+    }
   };
 
   const filtered = contributions.filter(c => {
@@ -194,9 +244,20 @@ export default function Explorer() {
                 )}
                 
                 <View style={{ padding: 16 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
                     <Text style={{ color: '#F8FF00', fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase' }}>{c.type}</Text>
-                    <Text style={{ color: '#666', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</Text>
+                    
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <Text style={{ color: '#666', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</Text>
+                      {role === 'admin' && (
+                        <Pressable 
+                          onPress={() => handleDeleteContribution(c.id)}
+                          style={{ backgroundColor: 'rgba(255, 68, 68, 0.1)', padding: 6, borderRadius: 8 }}
+                        >
+                          <MaterialIcons name="delete" size={18} color="#FF4444" />
+                        </Pressable>
+                      )}
+                    </View>
                   </View>
 
                   <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 6 }}>{c.titre}</Text>

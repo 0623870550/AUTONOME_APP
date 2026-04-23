@@ -8,6 +8,7 @@ export default function AdminLayout() {
       <Stack.Screen name="actualites" />
       <Stack.Screen name="statistiques" />
       <Stack.Screen name="utilisateurs" />
+      <Stack.Screen name="moderation" />
     </Stack>
   );
 }

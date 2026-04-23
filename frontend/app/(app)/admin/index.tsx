@@ -58,6 +58,16 @@ export default function AdminPage() {
                 </View>
               </View>
             </Pressable>
+
+            <Pressable style={styles.card} onPress={() => router.push('/admin/moderation')}>
+              <View style={styles.cardContent}>
+                <Text style={styles.cardEmoji}>⚖️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>Modérer les propositions</Text>
+                  <Text style={styles.cardText}>Validez ou rejetez les idées des agents.</Text>
+                </View>
+              </View>
+            </Pressable>
           </View>
 
           {/* SECTION ORGANISATION */}
