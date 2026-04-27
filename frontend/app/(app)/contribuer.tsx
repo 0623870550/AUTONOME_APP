@@ -106,8 +106,8 @@ export default function Contribuer() {
       if (Platform.OS === 'web') {
         fileBody = await uriToBlob(uri);
       } else {
-        const formData = new FormData();
         const extension = type === 'image' ? 'jpg' : 'mp4';
+        const formData = new FormData();
         formData.append('file', {
           uri,
           name: fileName,
@@ -116,6 +116,7 @@ export default function Contribuer() {
         fileBody = formData;
       }
 
+      // Upload vers le bucket 'propositions'
       const { data, error } = await supabase.storage
         .from('propositions')
         .upload(filePath, fileBody, {
@@ -126,6 +127,7 @@ export default function Contribuer() {
 
       if (error) throw error;
 
+      // Récupération de l'URL publique (Correction 404)
       const { data: { publicUrl } } = supabase.storage
         .from('propositions')
         .getPublicUrl(filePath);
@@ -155,6 +157,10 @@ export default function Contribuer() {
       else if (att.type === 'video') videoUrl = url;
     }
 
+    // CALCUL DE L'HEURE DE PARIS (Correction décalage 2h)
+    const now = new Date();
+    const parisTime = new Date(now.getTime() + (2 * 60 * 60 * 1000));
+
     const { error } = await supabase.from('contributions').insert([
       {
         type,
@@ -167,7 +173,8 @@ export default function Contribuer() {
         created_by: session?.user.id,
         image_url: imageUrl,
         video_url: videoUrl,
-        votes_count: 0
+        votes_count: 0,
+        created_at: parisTime.toISOString() // On force l'heure de Paris
       },
     ]);
 
@@ -194,7 +201,7 @@ export default function Contribuer() {
           <Text style={{ color: '#F8FF00', fontSize: 26, fontWeight: '700' }}>
             Proposer
           </Text>
-          <Pressable 
+          <Pressable
             onPress={() => router.push('/')}
             style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' }}
           >
@@ -282,19 +289,19 @@ export default function Contribuer() {
                 borderColor: impact === lvl.key ? '#F8FF00' : 'rgba(255,255,255,0.05)',
               }}
             >
-              <View 
-                style={{ 
-                  width: 12, 
-                  height: 12, 
-                  borderRadius: 6, 
-                  backgroundColor: lvl.color, 
+              <View
+                style={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor: lvl.color,
                   marginRight: 8,
                   borderWidth: 1.5,
                   borderColor: 'rgba(0,0,0,0.2)'
-                }} 
+                }}
               />
-              <Text style={{ 
-                color: impact === lvl.key ? '#000' : '#fff', 
+              <Text style={{
+                color: impact === lvl.key ? '#000' : '#fff',
                 fontWeight: '700',
                 fontSize: 14
               }}>
@@ -306,14 +313,14 @@ export default function Contribuer() {
 
         <Text style={{ color: '#fff', fontSize: 16, marginBottom: 8 }}>Média (optionnel)</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-          <Pressable 
+          <Pressable
             onPress={pickImage}
             style={{ flex: 1, backgroundColor: '#111', padding: 15, borderRadius: 12, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#444' }}
           >
             <MaterialIcons name="photo" size={24} color="#F8FF00" />
             <Text style={{ color: '#aaa', fontSize: 12, marginTop: 5 }}>Photo</Text>
           </Pressable>
-          <Pressable 
+          <Pressable
             onPress={pickVideo}
             style={{ flex: 1, backgroundColor: '#111', padding: 15, borderRadius: 12, alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#444' }}
           >
@@ -332,7 +339,7 @@ export default function Contribuer() {
                 <Text style={{ color: '#fff', marginTop: 10 }}>Vidéo sélectionnée</Text>
               </View>
             )}
-            <Pressable 
+            <Pressable
               onPress={() => setAttachments([])}
               style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 5 }}
             >

@@ -114,7 +114,7 @@ export default function Page() {
   const renderRoleLabel = () => {
     const pRole = agent.role; // admin, delegue, agent
     const cat = agent.role_agent || 'SDMIS';
-    
+
     if (pRole === 'admin') return `🛡️ Administrateur (${cat})`;
     if (pRole === 'delegue') return `🎖️ Délégué (${cat})`;
     return `👤 Agent (${cat})`;
@@ -123,7 +123,7 @@ export default function Page() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        
+
         {/* EN-TÊTE */}
         <View style={styles.header}>
           <View style={[styles.logo, { overflow: 'hidden', position: 'relative', borderRadius: 10 }]}>
@@ -181,8 +181,8 @@ export default function Page() {
 
 
         {/* SECTION ADHÉSION */}
-        <TouchableOpacity 
-          style={styles.adhesionCard} 
+        <TouchableOpacity
+          style={styles.adhesionCard}
           onPress={() => openLink('https://www.syndicatautonomesdmis.com/adhesion/')}
         >
           <Text style={styles.adhesionIcon}>🤝</Text>
@@ -195,12 +195,12 @@ export default function Page() {
 
         {/* ACTUALITÉS DINAMIQUES */}
         <Text style={styles.sectionTitle}>Actualités du Syndicat</Text>
-        
+
         {news && news.length > 0 ? (
           news.map((item: any) => (
-            <TouchableOpacity 
-              key={item.id} 
-              style={styles.webCard} 
+            <TouchableOpacity
+              key={item.id}
+              style={styles.webCard}
               onPress={() => {
                 if (item.image_url) {
                   Alert.alert(
@@ -208,8 +208,8 @@ export default function Page() {
                     item.content,
                     [
                       { text: 'Fermer', style: 'cancel' },
-                      { 
-                        text: 'Ouvrir la pièce jointe', 
+                      {
+                        text: 'Ouvrir la pièce jointe',
                         onPress: () => openLink(item.image_url)
                       }
                     ]
@@ -260,8 +260,8 @@ export default function Page() {
           </TouchableOpacity>
         </View>
         <View style={styles.socialContainer}>
-          <TouchableOpacity 
-            style={[styles.socialBtn, { backgroundColor: '#25D366' }]} 
+          <TouchableOpacity
+            style={[styles.socialBtn, { backgroundColor: '#25D366' }]}
             onPress={() => openLink(agent?.role_agent === 'PATS' ? 'https://chat.whatsapp.com/LklOMnRIMEgBjSLynTKTuL?mode=gi_t' : 'https://chat.whatsapp.com/CSvVl6wtEgdIJLO8akn5yF?mode=gi_t')}
           >
             <Text style={styles.socialBtnText}>

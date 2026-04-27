@@ -63,15 +63,15 @@ export default function Compte() {
           setMatricule(agentData.matricule || '');
           setGrade(agentData.grade || '');
           setAffectation(agentData.affectation || '');
-          
+
           const de = agentData.date_entree ? new Date(agentData.date_entree) : null;
           const dn = agentData.date_nomination ? new Date(agentData.date_nomination) : null;
-          
+
           setDateEntree(de);
           setDateNomination(dn);
           setDateEntreeWeb(agentData.date_entree || '');
           setDateNominationWeb(agentData.date_nomination || '');
-          
+
           setPhone(agentData.telephone || '');
           setProfileImage(agentData.photo_url || null);
         }
@@ -149,7 +149,7 @@ export default function Compte() {
   return (
     <PageContainer>
       <RN.ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        
+
         <RN.View style={styles.header}>
           <RN.View style={styles.avatarContainer}>
             <RN.Pressable onPress={isEditing ? pickImage : undefined}>
@@ -174,7 +174,7 @@ export default function Compte() {
             <RN.View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <RN.Text style={styles.userEmail}>{user?.email}</RN.Text>
               {grade && grade !== '' && grade !== 'Non renseigné' && (
-                <RN.Image 
+                <RN.Image
                   source={{ uri: `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/assets_grades/${grade.toLowerCase().replace(/ /g, '_')}.png` }}
                   style={{ width: 24, height: 24 }}
                   resizeMode="contain"
@@ -186,7 +186,7 @@ export default function Compte() {
             </RN.View>
           </RN.View>
 
-          <RN.Pressable 
+          <RN.Pressable
             onPress={() => isEditing ? handleUpdate() : setIsEditing(true)}
             style={[styles.editBtn, isEditing && styles.saveBtn]}
           >
@@ -356,8 +356,8 @@ export default function Compte() {
             <RN.View style={styles.modalContent}>
               <RN.Text style={styles.modalTitle}>Sélectionner un grade</RN.Text>
               {grades.map((g) => (
-                <RN.Pressable 
-                  key={g.value} 
+                <RN.Pressable
+                  key={g.value}
                   style={styles.gradeOption}
                   onPress={() => {
                     setGrade(g.value);

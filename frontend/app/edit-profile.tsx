@@ -23,7 +23,7 @@ export default function EditProfileScreen() {
   const [agent, setAgent] = useState<any>(null);
   const [prenom, setPrenom] = useState('');
   const [nom, setNom] = useState('');
-  const [typeAgent, setTypeAgent] = useState('');
+  const [roleAgent, setRoleAgent] = useState('');
   const [telephone, setTelephone] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +53,7 @@ export default function EditProfileScreen() {
         setAgent(data);
         setPrenom(data.prenom);
         setNom(data.nom);
-        setTypeAgent(data.type_agent);
+        setRoleAgent(data.role_agent);
         setTelephone(data.telephone || '');
       }
     };
@@ -86,7 +86,7 @@ export default function EditProfileScreen() {
       .update({
         prenom,
         nom,
-        type_agent: typeAgent,
+        role_agent: roleAgent,
         telephone: telephone || null,
       })
       .eq('id', session.user.id);
@@ -130,15 +130,15 @@ export default function EditProfileScreen() {
         <Text style={styles.label}>Type d’agent</Text>
         <View style={styles.typeRow}>
           <Pressable
-            style={[styles.typeButton, typeAgent === 'SPP' && styles.typeSelected]}
-            onPress={() => setTypeAgent('SPP')}
+            style={[styles.typeButton, roleAgent === 'SPP' && styles.typeSelected]}
+            onPress={() => setRoleAgent('SPP')}
           >
             <Text style={styles.typeText}>SPP</Text>
           </Pressable>
 
           <Pressable
-            style={[styles.typeButton, typeAgent === 'PATS' && styles.typeSelected]}
-            onPress={() => setTypeAgent('PATS')}
+            style={[styles.typeButton, roleAgent === 'PATS' && styles.typeSelected]}
+            onPress={() => setRoleAgent('PATS')}
           >
             <Text style={styles.typeText}>PATS</Text>
           </Pressable>

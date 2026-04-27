@@ -8,11 +8,14 @@ import {
   Text,
   TextInput,
   View,
+  Modal,
+  Platform,
+  RefreshControl,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
-import PageContainer from '../../../components/PageContainer';
-import AuthGate from '../../_auth-gate';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import AuthGate from '../../_auth-gate';
 
 export default function UserManagement() {
   const router = useRouter();
@@ -20,6 +23,10 @@ export default function UserManagement() {
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -41,7 +48,7 @@ export default function UserManagement() {
   }, [search, users]);
 
   const fetchUsers = async () => {
-    setLoading(true);
+    if (!refreshing) setLoading(true);
     const { data, error } = await supabase
       .from('agents')
       .select('*')
@@ -52,6 +59,12 @@ export default function UserManagement() {
       setFilteredUsers(data || []);
     }
     setLoading(false);
+    setRefreshing(false);
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchUsers();
   };
 
   const updateUserRole = async (userId: string, newRole: string) => {
@@ -63,83 +76,102 @@ export default function UserManagement() {
     if (error) {
       Alert.alert('Erreur', error.message);
     } else {
+      setModalVisible(false);
       fetchUsers();
     }
   };
 
-  const handleRoleChange = (user: any) => {
-    Alert.alert(
-      'Modifier le rôle',
-      `Quel rôle souhaitez-vous attribuer à ${user.prenom} ${user.nom} ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { text: 'Agent', onPress: () => updateUserRole(user.id, 'agent') },
-        { text: 'Délégué', onPress: () => updateUserRole(user.id, 'delegue') },
-        { text: 'Administrateur', onPress: () => updateUserRole(user.id, 'admin') },
-      ]
-    );
+  const openRoleModal = (user: any) => {
+    setSelectedUser(user);
+    setModalVisible(true);
   };
+
+  const renderHeader = () => (
+    <View style={styles.headerContainer}>
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Text style={{ color: '#F8FF00', fontSize: 16 }}>← Retour</Text>
+        </Pressable>
+        <Text style={styles.title}>Gestion des Utilisateurs</Text>
+      </View>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Rechercher un agent (nom, email...)"
+        placeholderTextColor="#666"
+        value={search}
+        onChangeText={setSearch}
+      />
+    </View>
+  );
 
   return (
     <AuthGate>
-      <PageContainer>
-        <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={{ color: '#F8FF00' }}>← Retour</Text>
-          </Pressable>
-          <Text style={styles.title}>Gestion des Utilisateurs</Text>
-        </View>
-
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Rechercher un agent (nom, email...)"
-          placeholderTextColor="#666"
-          value={search}
-          onChangeText={setSearch}
+      <SafeAreaView style={styles.container}>
+        <FlatList
+          data={filteredUsers}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F8FF00" />
+          }
+          renderItem={({ item }) => (
+            <View style={styles.userCard}>
+              <View style={styles.userInfo}>
+                <Text style={styles.userName}>{item.nom} {item.prenom}</Text>
+                <Text style={styles.userSub}>
+                  {item.role_agent || 'SDMIS'} • {item.email || 'Pas d\'email'}
+                </Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.roleBadge,
+                  item.role === 'admin' ? styles.adminBadge : item.role === 'delegue' ? styles.delegueBadge : styles.agentBadge,
+                  Platform.OS === 'web' && { cursor: 'pointer' } as any
+                ]}
+                onPress={() => openRoleModal(item)}
+              >
+                <Text style={styles.roleText}>
+                  {item.role === 'admin' ? 'ADN' : item.role === 'delegue' ? 'DEL' : 'AGE'}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <Text style={styles.emptyText}>Aucun utilisateur trouvé.</Text>
+            ) : null
+          }
+          ListFooterComponent={loading && !refreshing ? <ActivityIndicator size="large" color="#F8FF00" style={{ marginTop: 20 }} /> : null}
         />
 
-        {loading ? (
-          <ActivityIndicator size="large" color="#F8FF00" style={{ marginTop: 40 }} />
-        ) : (
-          <FlatList
-            data={filteredUsers}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.userCard}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>
-                    {item.nom} {item.prenom}
-                  </Text>
-                  <Text style={styles.userSub}>
-                    {item.role_agent || 'SDMIS'} • {item.email || 'Pas d\'email'}
-                  </Text>
-                </View>
-                <Pressable
-                  style={[
-                    styles.roleBadge,
-                    item.role === 'admin' ? styles.adminBadge : item.role === 'delegue' ? styles.delegueBadge : styles.agentBadge
-                  ]}
-                  onPress={() => handleRoleChange(item)}
-                >
-                  <Text style={styles.roleText}>
-                    {item.role === 'admin' ? 'ADN' : item.role === 'delegue' ? 'DEL' : 'AGE'}
+        <Modal visible={modalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Modifier le rôle</Text>
+              <Text style={styles.modalSub}>Attribuer un rôle à {selectedUser?.prenom} {selectedUser?.nom}</Text>
+              {['agent', 'delegue', 'admin'].map((role) => (
+                <Pressable key={role} style={styles.modalOption} onPress={() => updateUserRole(selectedUser.id, role)}>
+                  <Text style={[styles.modalOptionText, selectedUser?.role === role && { color: '#F8FF00' }]}>
+                    {role.charAt(0).toUpperCase() + role.slice(1)} {selectedUser?.role === role ? '✓' : ''}
                   </Text>
                 </Pressable>
-              </View>
-            )}
-            ListEmptyComponent={
-              <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 30 }}>
-                Aucun utilisateur trouvé.
-              </Text>
-            }
-          />
-        )}
-      </PageContainer>
+              ))}
+              <Pressable style={styles.closeButton} onPress={() => setModalVisible(false)}>
+                <Text style={styles.closeButtonText}>Annuler</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
     </AuthGate>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  headerContainer: { paddingHorizontal: 16, paddingTop: 10 },
+  listContent: { paddingBottom: 40 },
   header: { marginBottom: 20 },
   backButton: { marginBottom: 10 },
   title: { color: '#F8FF00', fontSize: 24, fontWeight: 'bold' },
@@ -151,12 +183,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#333',
-    fontSize: 15,
   },
   userCard: {
     backgroundColor: '#111',
     borderRadius: 12,
     padding: 16,
+    marginHorizontal: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,19 +198,18 @@ const styles = StyleSheet.create({
   userInfo: { flex: 1 },
   userName: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   userSub: { color: '#888', fontSize: 13, marginTop: 4 },
-  roleBadge: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  roleBadge: { width: 45, height: 45, borderRadius: 22.5, alignItems: 'center', justifyContent: 'center' },
   agentBadge: { backgroundColor: '#333' },
   delegueBadge: { backgroundColor: '#007AFF' },
   adminBadge: { backgroundColor: '#F8FF00' },
-  roleText: {
-    fontWeight: 'bold',
-    fontSize: 12,
-    color: '#fff',
-  },
+  roleText: { fontWeight: 'bold', fontSize: 12, color: '#000' },
+  emptyText: { color: '#aaa', textAlign: 'center', marginTop: 30 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#111', borderRadius: 20, padding: 25, width: '100%', maxWidth: 400, borderWidth: 1, borderColor: '#333' },
+  modalTitle: { color: '#F8FF00', fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
+  modalSub: { color: '#aaa', fontSize: 14, marginBottom: 20 },
+  modalOption: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#222' },
+  modalOptionText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  closeButton: { marginTop: 20, alignItems: 'center' },
+  closeButtonText: { color: '#FF4444', fontSize: 16, fontWeight: 'bold' },
 });

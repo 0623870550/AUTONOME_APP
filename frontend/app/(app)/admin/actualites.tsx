@@ -8,6 +8,8 @@ import {
   Text,
   TextInput,
   View,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
 import PageContainer from '../../../components/PageContainer';
@@ -27,6 +29,27 @@ export default function AdminActualites() {
   const [category, setCategory] = useState<'GENERAL' | 'SPP' | 'PATS'>('GENERAL');
   const [loading, setLoading] = useState(false);
 
+  // État pour la liste des actualités
+  const [actualites, setActualites] = useState<any[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+
+  useEffect(() => {
+    fetchActualites();
+  }, []);
+
+  const fetchActualites = async () => {
+    setLoadingList(true);
+    const { data, error } = await supabase
+      .from('actualites')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error) {
+      setActualites(data || []);
+    }
+    setLoadingList(false);
+  };
+
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -39,6 +62,36 @@ export default function AdminActualites() {
       }
     } catch (err) {
       Alert.alert('Erreur', 'Impossible de sélectionner le fichier.');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmDelete = () => {
+      executeDelete(id);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm("Voulez-vous vraiment supprimer cette actualité ?")) {
+        confirmDelete();
+      }
+    } else {
+      Alert.alert(
+        "Suppression",
+        "Voulez-vous vraiment supprimer cette actualité ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Supprimer", style: "destructive", onPress: confirmDelete }
+        ]
+      );
+    }
+  };
+
+  const executeDelete = async (id: string) => {
+    const { error } = await supabase.from('actualites').delete().eq('id', id);
+    if (error) {
+      Alert.alert("Erreur", "Impossible de supprimer l'actualité.");
+    } else {
+      fetchActualites();
     }
   };
 
@@ -96,21 +149,29 @@ export default function AdminActualites() {
       Alert.alert('Erreur', error.message);
     } else {
       Alert.alert('Succès', 'Actualité publiée avec succès !');
-      router.back();
+      // Reset form
+      setTitle('');
+      setContent('');
+      setImageUrl('');
+      setSelectedFile(null);
+      setCategory('GENERAL');
+      // Refresh list
+      fetchActualites();
     }
   };
 
   return (
     <AuthGate>
       <PageContainer>
-        <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
             <Pressable onPress={() => router.back()} style={styles.backButton}>
               <Text style={{ color: '#F8FF00' }}>← Retour</Text>
             </Pressable>
-            <Text style={styles.title}>Publier une actualité</Text>
+            <Text style={styles.title}>Dashboard Actualités</Text>
           </View>
 
+          {/* FORMULAIRE DE CRÉATION */}
           <View style={styles.form}>
             <Text style={styles.label}>Titre</Text>
             <TextInput
@@ -127,29 +188,14 @@ export default function AdminActualites() {
                 <Pressable
                   key={cat}
                   onPress={() => setCategory(cat as any)}
-                  style={[
-                    styles.catBtn,
-                    category === cat && styles.catBtnActive,
-                  ]}
+                  style={[styles.catBtn, category === cat && styles.catBtnActive]}
                 >
-                  <Text style={[
-                    styles.catText,
-                    category === cat && styles.catTextActive,
-                  ]}>
+                  <Text style={[styles.catText, category === cat && styles.catTextActive]}>
                     {cat}
                   </Text>
                 </Pressable>
               ))}
             </View>
-
-            <Text style={styles.label}>Lien Image (Optionnel)</Text>
-            <TextInput
-              style={styles.input}
-              value={imageUrl}
-              onChangeText={setImageUrl}
-              placeholder="https://..."
-              placeholderTextColor="#666"
-            />
 
             <Text style={styles.label}>Contenu</Text>
             <TextInput
@@ -159,23 +205,18 @@ export default function AdminActualites() {
               placeholder="Ecrire l'actualité ici..."
               placeholderTextColor="#666"
               multiline
-              numberOfLines={10}
+              numberOfLines={6}
             />
 
-            <Pressable onPress={pickDocument} style={[styles.fileBtn, { marginTop: 10 }]}>
-              <Text style={styles.fileBtnText}>📎 Joindre un média (Photo, Vidéo, PDF)</Text>
+            <Pressable onPress={pickDocument} style={styles.fileBtn}>
+              <Text style={styles.fileBtnText}>📎 Joindre un média</Text>
             </Pressable>
 
             {selectedFile && (
               <View style={styles.selectedFileContainer}>
-                {selectedFile.mimeType?.startsWith('image/') ? (
-                  <Image source={{ uri: selectedFile.uri }} style={styles.filePreview} />
-                ) : (
-                  <Text style={styles.fileIcon}>📄</Text>
-                )}
-                <Text style={styles.fileName} numberOfLines={1}>{selectedFile.name}</Text>
-                <Pressable onPress={() => setSelectedFile(null)} style={styles.clearFileBtn}>
-                  <Text style={styles.clearFileText}>✕</Text>
+                <Text style={styles.fileName} numberOfLines={1}>✅ {selectedFile.name}</Text>
+                <Pressable onPress={() => setSelectedFile(null)}>
+                  <Text style={{ color: '#ff4444', fontWeight: 'bold' }}>Supprimer</Text>
                 </Pressable>
               </View>
             )}
@@ -190,6 +231,34 @@ export default function AdminActualites() {
               </Text>
             </Pressable>
           </View>
+
+          {/* LISTE DES ACTUALITÉS PUBLIÉES */}
+          <View style={styles.divider} />
+          <Text style={styles.sectionTitle}>Actualités publiées</Text>
+
+          {loadingList ? (
+            <ActivityIndicator color="#F8FF00" style={{ marginTop: 20 }} />
+          ) : (
+            <View style={styles.newsList}>
+              {actualites.map((item) => (
+                <View key={item.id} style={styles.newsCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.newsTitle} numberOfLines={1}>{item.title}</Text>
+                    <Text style={styles.newsInfo}>
+                      Cible: {item.category} • {new Date(item.created_at).toLocaleDateString('fr-FR')}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
+                    <Text style={styles.deleteBtnText}>🗑️</Text>
+                  </Pressable>
+                </View>
+              ))}
+              {actualites.length === 0 && (
+                <Text style={styles.emptyText}>Aucune actualité publiée pour le moment.</Text>
+              )}
+            </View>
+          )}
+
         </ScrollView>
       </PageContainer>
     </AuthGate>
@@ -200,91 +269,45 @@ const styles = StyleSheet.create({
   header: { marginBottom: 25 },
   backButton: { marginBottom: 10 },
   title: { color: '#F8FF00', fontSize: 24, fontWeight: 'bold' },
-  form: { gap: 15 },
-  label: { color: '#fff', fontSize: 16, fontWeight: '600', marginBottom: 5 },
+  form: { gap: 15, backgroundColor: '#111', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#333' },
+  label: { color: '#aaa', fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
   input: {
-    backgroundColor: '#111',
+    backgroundColor: '#000',
     color: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#333',
-    fontSize: 16,
-  },
-  textArea: {
-    height: 200,
-    textAlignVertical: 'top',
-  },
-  categoryRow: { flexDirection: 'row', gap: 10 },
-  catBtn: {
-    flex: 1,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#222',
-    alignItems: 'center',
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#333',
+    fontSize: 15,
   },
-  catBtnActive: {
-    backgroundColor: '#F8FF00',
-    borderColor: '#F8FF00',
-  },
-  catText: { color: '#888', fontWeight: 'bold' },
+  textArea: { height: 100, textAlignVertical: 'top' },
+  categoryRow: { flexDirection: 'row', gap: 8 },
+  catBtn: { flex: 1, padding: 10, borderRadius: 8, backgroundColor: '#222', alignItems: 'center' },
+  catBtnActive: { backgroundColor: '#F8FF00' },
+  catText: { color: '#888', fontWeight: 'bold', fontSize: 12 },
   catTextActive: { color: '#000' },
-  publishBtn: {
-    backgroundColor: '#F8FF00',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  publishText: { color: '#000', fontWeight: 'bold', fontSize: 17 },
-  fileBtn: {
-    backgroundColor: '#222',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F8FF00',
-    borderStyle: 'dashed',
-    marginTop: -5,
-    marginBottom: 10,
-  },
-  fileBtnText: {
-    color: '#F8FF00',
-    fontWeight: 'bold',
-  },
-  selectedFileContainer: {
+  publishBtn: { backgroundColor: '#F8FF00', padding: 15, borderRadius: 8, alignItems: 'center', marginTop: 10 },
+  publishText: { color: '#000', fontWeight: 'bold', fontSize: 16 },
+  fileBtn: { padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#F8FF00', borderStyle: 'dashed', alignItems: 'center' },
+  fileBtnText: { color: '#F8FF00', fontWeight: 'bold' },
+  selectedFileContainer: { flexDirection: 'row', justifyContent: 'space-between', padding: 10, backgroundColor: '#222', borderRadius: 8 },
+  fileName: { color: '#fff', flex: 1, marginRight: 10 },
+  
+  divider: { height: 1, backgroundColor: '#333', marginVertical: 30 },
+  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
+  newsList: { gap: 12 },
+  newsCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#111',
-    padding: 10,
+    padding: 15,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#333',
-    marginBottom: 10,
+    borderColor: '#222',
   },
-  filePreview: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-    marginRight: 10,
-  },
-  fileIcon: {
-    fontSize: 24,
-    marginRight: 10,
-  },
-  fileName: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 14,
-  },
-  clearFileBtn: {
-    padding: 10,
-  },
-  clearFileText: {
-    color: '#FF4444',
-    fontWeight: 'bold',
-    fontSize: 18,
-  },
+  newsTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  newsInfo: { color: '#666', fontSize: 12, marginTop: 4 },
+  deleteBtn: { padding: 10, marginLeft: 10 },
+  deleteBtnText: { fontSize: 18 },
+  emptyText: { color: '#666', textAlign: 'center', marginTop: 20 },
 });

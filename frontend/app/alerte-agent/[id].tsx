@@ -1,6 +1,6 @@
 import PageContainer from 'components/PageContainer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { supabase } from 'lib/supabase';
+import { supabase, getPublicMediaUrl } from 'lib/supabase';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,7 +12,8 @@ import {
   View,
   Linking,
   StyleSheet,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { useAgentPermission } from '../../context/AgentPermissionContext';
 import { useAgentRole } from '../../context/AgentRoleContext';
@@ -33,7 +34,11 @@ export default function AlerteAgentDetail() {
 
   useEffect(() => {
     const loadAlerte = async () => {
-      if (!id) return;
+      if (!id || id === 'undefined') {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       const { data, error } = await supabase
@@ -47,14 +52,12 @@ export default function AlerteAgentDetail() {
       }
 
       if (data) {
-        // LOGIQUE ADMIN : Si on est admin, on passe. Sinon, on vérifie le rôle métier.
         if (role !== 'admin' && data.role_agent !== roleAgent) {
           Alert.alert("Accès refusé", "Vous n'avez pas les droits pour voir cette alerte.");
           router.back();
           return;
         }
 
-        // On récupère manuellement l'agent pour éviter l'erreur de jointure
         if (!data.anonyme) {
           const agentId = data.agent_id || data.created_by;
           if (agentId) {
@@ -78,40 +81,62 @@ export default function AlerteAgentDetail() {
   }, [id, session, roleAgent, role]);
 
   const handleDelete = async () => {
-    Alert.alert(
-      "Supprimer l'alerte",
-      "Êtes-vous sûr de vouloir supprimer définitivement cette alerte et ses pièces jointes ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        {
-          text: "Supprimer",
-          style: "destructive",
-          onPress: async () => {
-            setIsDeleting(true);
-            const { error } = await supabase.from('alerte').delete().eq('id', id);
-            if (!error) {
-              router.back();
-            } else {
-              Alert.alert("Erreur", "Impossible de supprimer l'alerte.");
-              setIsDeleting(false);
-            }
-          }
-        }
-      ]
-    );
+    const executeDelete = async () => {
+      setIsDeleting(true);
+      try {
+        const { error } = await supabase.from('alerte').delete().eq('id', id);
+        if (error) throw error;
+        router.back();
+      } catch (err: any) {
+        console.error("Erreur de suppression:", err.message);
+        if (Platform.OS === 'web') alert("Erreur: Impossible de supprimer l'alerte.");
+        else Alert.alert("Erreur", "Impossible de supprimer l'alerte.");
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+    const msg = "Êtes-vous sûr de vouloir supprimer définitivement cette alerte et ses pièces jointes ?";
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) {
+        executeDelete();
+      }
+    } else {
+      Alert.alert(
+        "Supprimer l'alerte",
+        msg,
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Supprimer", style: "destructive", onPress: executeDelete }
+        ]
+      );
+    }
   };
 
   const openAttachment = async (att: any) => {
-    if (att.type === 'image') {
-      setViewerImage(att.remoteUrl);
-      setViewerVisible(true);
-    } else {
-      const supported = await Linking.canOpenURL(att.remoteUrl);
-      if (supported) {
-        await Linking.openURL(att.remoteUrl);
-      } else {
-        Alert.alert("Erreur", "Impossible d'ouvrir ce type de fichier.");
+    try {
+      const url = att.remoteUrl || getPublicMediaUrl(att.name || att.path);
+
+      if (!url) {
+        Alert.alert("Erreur", "Impossible de localiser le fichier.");
+        return;
       }
+
+      if (att.type === 'image') {
+        setViewerImage(url);
+        setViewerVisible(true);
+      } else {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          await Linking.openURL(url);
+        }
+      }
+    } catch (e) {
+      console.error("Erreur openAttachment:", e);
+      Alert.alert("Erreur", "Impossible d'ouvrir ce fichier.");
     }
   };
 
@@ -132,7 +157,7 @@ export default function AlerteAgentDetail() {
             Impossible de charger cette alerte
           </Text>
           <Text style={{ color: '#aaa', textAlign: 'center', marginHorizontal: 20, marginBottom: 20 }}>
-            L'alerte a peut-être été supprimée ou une erreur réseau est survenue.
+            L'alerte a peut-être été supprimée ou une erreur réseau est survenue. (ID: {String(id)})
           </Text>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Retour</Text>
@@ -145,8 +170,6 @@ export default function AlerteAgentDetail() {
   return (
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
-
-        {/* BOUTON RETOUR STYLE PJ2 */}
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Retour</Text>
         </Pressable>
@@ -175,7 +198,7 @@ export default function AlerteAgentDetail() {
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <Text style={styles.label}>Gravité :</Text>
-              <Text style={[styles.value, { color: alerte.gravite === 'Haute' ? '#FF4444' : '#F8FF00' }]}>
+              <Text style={[styles.value, { color: alerte.gravite === 'important' || alerte.gravite === 'Haute' ? '#FF4444' : '#F8FF00' }]}>
                 {alerte.gravite}
               </Text>
             </View>
@@ -195,16 +218,17 @@ export default function AlerteAgentDetail() {
         ) : (
           alerte.attachments.map((att: any, index: number) => (
             <Pressable key={index} onPress={() => openAttachment(att)} style={styles.attachmentItem}>
-              <Text style={{ color: '#fff' }}>
-                {att.type === 'image' ? '🖼️ ' : att.type === 'video' ? '🎥 ' : '📄 '}
-                {att.name || `Fichier ${index + 1}`}
-              </Text>
-              <Text style={{ color: '#F8FF00' }}>Voir</Text>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={{ color: '#fff' }} numberOfLines={1}>
+                  {att.type === 'image' ? '🖼️ ' : att.type === 'video' ? '🎥 ' : '📄 '}
+                  {att.name || `Fichier ${index + 1}`}
+                </Text>
+              </View>
+              <Text style={{ color: '#F8FF00', fontWeight: 'bold' }}>Voir</Text>
             </Pressable>
           ))
         )}
 
-        {/* BOUTON SUPPRIMER RÉSERVÉ ADMIN */}
         {role === 'admin' && (
           <Pressable
             onPress={handleDelete}
@@ -218,11 +242,12 @@ export default function AlerteAgentDetail() {
         )}
       </ScrollView>
 
-      {/* MODAL IMAGE */}
-      <Modal visible={viewerVisible} transparent>
+      <Modal visible={viewerVisible} transparent animationType="fade">
         <Pressable onPress={() => setViewerVisible(false)} style={styles.modalOverlay}>
           {viewerImage && <Image source={{ uri: viewerImage }} style={styles.fullImage} resizeMode="contain" />}
-          <Text style={{ color: '#fff', marginTop: 20 }}>Fermer</Text>
+          <View style={{ backgroundColor: '#F8FF00', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginTop: 20 }}>
+            <Text style={{ color: '#000', fontWeight: 'bold' }}>Fermer</Text>
+          </View>
         </Pressable>
       </Modal>
     </PageContainer>
@@ -242,7 +267,7 @@ const styles = StyleSheet.create({
   backButtonText: { color: '#F8FF00', fontWeight: 'bold' },
   mainTitle: { color: '#fff', fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
   card: { backgroundColor: '#1a1a1a', borderRadius: 15, padding: 20, borderWidth: 1, borderColor: '#333' },
-  typeText: { color: '#F8FF00', fontSize: 20, fontWeight: 'bold' },
+  typeText: { color: '#F8FF00', fontSize: 20, fontWeight: 'bold', textTransform: 'capitalize' },
   divider: { height: 1, backgroundColor: '#333', marginVertical: 15 },
   label: { color: '#888', fontSize: 12, textTransform: 'uppercase', marginBottom: 2 },
   value: { color: '#fff', fontSize: 16, marginBottom: 15 },
@@ -265,6 +290,6 @@ const styles = StyleSheet.create({
     marginBottom: 40
   },
   deleteButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
-  fullImage: { width: '90%', height: '70%' }
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  fullImage: { width: '95%', height: '80%' }
 });

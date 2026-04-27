@@ -82,7 +82,7 @@ export default function Signup() {
       pseudo: pseudo,
       prenom: prenom,
       nom: nom,
-      type_agent: typeAgent
+      role_agent: typeAgent
     });
 
     // 1️⃣ Création du compte Supabase Auth AVEC les métadonnées (Correction Supabase)
@@ -94,7 +94,7 @@ export default function Signup() {
           pseudo: pseudo,
           prenom: prenom,
           nom: nom,
-          type_agent: typeAgent,
+          role_agent: typeAgent,
         }
       }
     });
@@ -106,16 +106,12 @@ export default function Signup() {
     }
 
     // 2️⃣ Appel à la Edge Function pour créer l'agent côté serveur
-    await fetch("https://cnskvexluuaxdxsquwzc.supabase.co/functions/v1/smart-service", {
-      method: "POST",
-      mode: "cors",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    await supabase.functions.invoke("smart-service", {
+      body: {
         user_id: authData.user.id,
         email,
-      }),
+        role_agent: typeAgent,
+      },
     });
 
     // 3️⃣ Fin du processus

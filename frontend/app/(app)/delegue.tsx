@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
+  Platform,
 } from 'react-native';
 import PageContainer from '../../components/PageContainer';
 import AuthGate from '../_auth-gate';
@@ -60,6 +62,14 @@ export default function DeleguesScreen() {
     if (email) Linking.openURL(`mailto:${email}`);
   };
 
+  const handleModifyReferent = () => {
+    if (Platform.OS === 'web') {
+      alert("Fonctionnalité de choix du délégué à venir");
+    } else {
+      Alert.alert("Information", "Fonctionnalité de choix du délégué à venir");
+    }
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -96,7 +106,7 @@ export default function DeleguesScreen() {
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 }}>
                 <Text style={{ color: '#F8FF00', fontWeight: '900', fontSize: 13, letterSpacing: 1 }}>VOTRE PROFIL RÉFÉRENT</Text>
                 <Pressable 
-                  onPress={() => router.push('/compte')}
+                  onPress={handleModifyReferent}
                   style={{ backgroundColor: '#F8FF00', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }}
                 >
                   <Text style={{ color: '#000', fontSize: 11, fontWeight: 'bold' }}>Modifier</Text>
@@ -200,4 +210,3 @@ const styles = StyleSheet.create({
   emptyEmoji: { fontSize: 50, marginBottom: 15 },
   emptyText: { color: '#666', textAlign: 'center', fontSize: 15, lineHeight: 22 },
 });
-

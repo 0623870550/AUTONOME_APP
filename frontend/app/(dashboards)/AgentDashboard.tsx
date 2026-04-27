@@ -7,7 +7,7 @@ type Agent = {
   prenom: string;
   nom: string;
   avatar_url?: string;
-  type_agent: string;
+  role_agent: string;
 };
 
 export default function Page({ agent }: { agent: Agent }) {
@@ -34,7 +34,7 @@ export default function Page({ agent }: { agent: Agent }) {
         <Text style={styles.nom}>{agent.nom.toUpperCase()}</Text>
 
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>{agent.type_agent}</Text>
+          <Text style={styles.badgeText}>{agent.role_agent}</Text>
         </View>
 
         <Pressable style={styles.profileButton} onPress={() => router.push('/profile')}>
