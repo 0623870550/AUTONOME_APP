@@ -57,16 +57,12 @@ export default function Contribuer() {
     );
   };
 
-  const uriToBlob = async (uri: string) => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return blob;
-  };
+
 
   const pickImage = async () => {
     setShowAttachmentMenu(false);
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.7,
     });
     if (!res.canceled) {
@@ -83,7 +79,7 @@ export default function Contribuer() {
   const pickVideo = async () => {
     setShowAttachmentMenu(false);
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      mediaTypes: ['videos'],
       quality: 0.7,
     });
     if (!res.canceled) {
@@ -102,24 +98,25 @@ export default function Contribuer() {
       const fileName = `${Date.now()}.${type === 'image' ? 'jpg' : 'mp4'}`;
       const filePath = `${session?.user.id}/${fileName}`;
 
-      let fileBody;
-      if (Platform.OS === 'web') {
-        fileBody = await uriToBlob(uri);
-      } else {
-        const extension = type === 'image' ? 'jpg' : 'mp4';
-        const formData = new FormData();
-        formData.append('file', {
-          uri,
-          name: fileName,
-          type: type === 'image' ? 'image/jpeg' : 'video/mp4',
-        } as any);
-        fileBody = formData;
-      }
+      // LOGIQUE XHR ROBUSTE POUR MOBILE
+      const xhr = new XMLHttpRequest();
+      const blob: Blob = await new Promise((resolve, reject) => {
+        xhr.onload = function () {
+          resolve(xhr.response);
+        };
+        xhr.onerror = function (e) {
+          console.error("XHR Error:", e);
+          reject(new TypeError("Network request failed"));
+        };
+        xhr.responseType = "blob";
+        xhr.open("GET", uri, true);
+        xhr.send(null);
+      });
 
       // Upload vers le bucket 'propositions'
       const { data, error } = await supabase.storage
         .from('propositions')
-        .upload(filePath, fileBody, {
+        .upload(filePath, blob, {
           contentType: type === 'image' ? 'image/jpeg' : 'video/mp4',
           cacheControl: '3600',
           upsert: false
@@ -127,14 +124,15 @@ export default function Contribuer() {
 
       if (error) throw error;
 
-      // Récupération de l'URL publique (Correction 404)
+      // Récupération de l'URL publique
       const { data: { publicUrl } } = supabase.storage
         .from('propositions')
         .getPublicUrl(filePath);
 
       return publicUrl;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Upload error:', err);
+      Alert.alert("Erreur Média", "Impossible d'envoyer le fichier : " + (err.message || "Réseau instable"));
       return null;
     }
   };
@@ -157,7 +155,6 @@ export default function Contribuer() {
       else if (att.type === 'video') videoUrl = url;
     }
 
-    // CALCUL DE L'HEURE DE PARIS (Correction décalage 2h)
     const now = new Date();
     const parisTime = new Date(now.getTime() + (2 * 60 * 60 * 1000));
 
@@ -174,7 +171,7 @@ export default function Contribuer() {
         image_url: imageUrl,
         video_url: videoUrl,
         votes_count: 0,
-        created_at: parisTime.toISOString() // On force l'heure de Paris
+        created_at: parisTime.toISOString()
       },
     ]);
 

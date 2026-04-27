@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AppLayout() {
   const { session } = useSession();
-  const { alert } = useAlert();
+  const { alert, pendingCount } = useAlert();
   const { roleAgent } = useAgentRole();
   const { role } = useAgentPermission();
   const router = useRouter();
@@ -130,8 +130,15 @@ export default function AppLayout() {
                       pressed && { backgroundColor: 'rgba(255, 255, 255, 0.05)' }
                     ]}
                   >
-                    <Text style={styles.menuItemText}>{item.name}</Text>
-                    {item.name.includes('Sondages') && hasSurveyNotification && <View style={styles.dot} />}
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={styles.menuItemText}>{item.name}</Text>
+                      {item.name.includes('Administration') && pendingCount > 0 && (
+                        <View style={styles.numericBadge}>
+                          <Text style={styles.numericBadgeText}>{pendingCount}</Text>
+                        </View>
+                      )}
+                      {item.name.includes('Sondages') && hasSurveyNotification && <View style={styles.dot} />}
+                    </View>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -241,6 +248,20 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#F8FF00',
     marginLeft: 10,
+  },
+  numericBadge: {
+    backgroundColor: '#ff3b30',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numericBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   menuFooter: {
     paddingVertical: 20,

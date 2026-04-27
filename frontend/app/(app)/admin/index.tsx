@@ -2,9 +2,11 @@ import { StyleSheet, Text, View, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import AuthGate from "../../_auth-gate";
 import PageContainer from '../../../components/PageContainer';
+import { useAlert } from '../../../context/AlertContext';
 
 export default function AdminPage() {
   const router = useRouter();
+  const { pendingCount } = useAlert();
 
   return (
     <AuthGate>
@@ -53,7 +55,14 @@ export default function AdminPage() {
               <View style={styles.cardContent}>
                 <Text style={styles.cardEmoji}>🚨</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>Toutes les alertes</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.cardTitle}>Toutes les alertes</Text>
+                    {pendingCount > 0 && (
+                      <View style={styles.numericBadge}>
+                        <Text style={styles.numericBadgeText}>{pendingCount}</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.cardText}>Consultez et traitez les alertes reçues.</Text>
                 </View>
               </View>
@@ -163,5 +172,19 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontSize: 13,
     lineHeight: 18,
+  },
+  numericBadge: {
+    backgroundColor: '#ff3b30',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numericBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
 });

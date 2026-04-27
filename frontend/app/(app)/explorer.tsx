@@ -52,14 +52,15 @@ export default function Explorer() {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'tendances' | 'recentes'>('tendances');
-
   const [selected, setSelected] = useState<Contribution | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [zoomMedia, setZoomMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
+  const [userVotes, setUserVotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchContributions();
-    
+    fetchUserVotes();
+
     const sub = supabase
       .channel('contributions-db')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'contributions' }, () => {
@@ -72,10 +73,28 @@ export default function Explorer() {
     };
   }, [activeTab]);
 
+  const fetchUserVotes = async () => {
+    if (!session) return;
+    const { data, error } = await supabase
+      .from('contribution_votes')
+      .select('contribution_id, vote_type')
+      .eq('user_id', session.user.id);
+
+    if (!error && data) {
+      const votesMap: Record<string, string> = {};
+      data.forEach(v => {
+        let typeStr = 'neutral';
+        if (v.vote_type === 1) typeStr = 'up';
+        else if (v.vote_type === -1) typeStr = 'down';
+        votesMap[v.contribution_id] = typeStr;
+      });
+      setUserVotes(votesMap);
+    }
+  };
+
   const fetchContributions = async () => {
     setLoading(true);
-    
-    // Filtre pour les 90 derniers jours
+
     const dateLimit = new Date();
     dateLimit.setDate(dateLimit.getDate() - 90);
     const isoLimit = dateLimit.toISOString();
@@ -98,21 +117,64 @@ export default function Explorer() {
     setLoading(false);
   };
 
-  const handleLike = async (contributionId: string) => {
+  const handleVote = async (contributionId: string, voteType: 'up' | 'down' | 'neutral') => {
     if (!session) return;
 
-    const { error } = await supabase.rpc('increment_contribution_vote', { row_id: contributionId });
+    const voteValueMap = { 'up': 1, 'down': -1, 'neutral': 0 };
+    const numericValue = voteValueMap[voteType];
 
-    if (error) {
-      const current = contributions.find(c => c.id === contributionId);
-      if (current) {
+
+    const previousVote = userVotes[contributionId];
+
+    setUserVotes(prev => {
+      const next = { ...prev };
+      if (previousVote === voteType) delete next[contributionId];
+      else next[contributionId] = voteType;
+      return next;
+    });
+
+    setContributions(prev => prev.map(c => {
+      if (c.id === contributionId) {
+        let newCount = c.votes_count || 0;
+        if (previousVote === 'up') newCount--;
+        if (voteType === 'up' && previousVote !== 'up') newCount++;
+        return { ...c, votes_count: newCount };
+      }
+      return c;
+    }));
+
+    try {
+      if (previousVote === voteType) {
+        await supabase
+          .from('contribution_votes')
+          .delete()
+          .match({ contribution_id: contributionId, user_id: session.user.id });
+      } else {
+        await supabase
+          .from('contribution_votes')
+          .upsert({
+            contribution_id: contributionId,
+            user_id: session.user.id,
+            vote_type: numericValue
+          }, { onConflict: 'contribution_id,user_id' });
+      }
+
+      let diff = 0;
+      if (previousVote === 'up') diff--;
+      if (voteType === 'up' && previousVote !== 'up') diff++;
+
+      if (diff !== 0) {
+        const { data: current } = await supabase.from('contributions').select('votes_count').eq('id', contributionId).single();
         await supabase
           .from('contributions')
-          .update({ votes_count: (current.votes_count || 0) + 1 })
+          .update({ votes_count: (current?.votes_count || 0) + diff })
           .eq('id', contributionId);
       }
+    } catch (e: any) {
+      console.error("Vote Error:", e.message || e);
+      fetchContributions();
+      fetchUserVotes();
     }
-    fetchContributions();
   };
 
   const handleDeleteContribution = async (id: string) => {
@@ -120,20 +182,20 @@ export default function Explorer() {
     if (!item) return;
 
     const confirmMsg = "Voulez-vous vraiment supprimer cette proposition définitivement ?";
-    
-    const proceed = Platform.OS === 'web' 
-      ? window.confirm(confirmMsg) 
+
+    const proceed = Platform.OS === 'web'
+      ? window.confirm(confirmMsg)
       : await new Promise((resolve) => {
-          Alert.alert("Suppression", confirmMsg, [
-            { text: "Annuler", style: "cancel", onPress: () => resolve(false) },
-            { text: "Supprimer", style: "destructive", onPress: () => resolve(true) }
-          ]);
-        });
+        Alert.alert("Suppression", confirmMsg, [
+          { text: "Annuler", style: "cancel", onPress: () => resolve(false) },
+          { text: "Supprimer", style: "destructive", onPress: () => resolve(true) }
+        ]);
+      });
 
     if (proceed) {
       // Nettoyage Storage (propositions)
       const storage = supabase.storage.from('propositions');
-      
+
       if (item.image_url) {
         const filePath = item.image_url.split('/propositions/')[1];
         if (filePath) await storage.remove([filePath]);
@@ -153,8 +215,8 @@ export default function Explorer() {
   };
 
   const filtered = contributions.filter(c => {
-    const matchesSearch = c.titre.toLowerCase().includes(search.toLowerCase()) || 
-                         c.description.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = c.titre.toLowerCase().includes(search.toLowerCase()) ||
+      c.description.toLowerCase().includes(search.toLowerCase());
     return matchesSearch;
   });
 
@@ -163,9 +225,9 @@ export default function Explorer() {
       <PageContainer>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <Text style={{ color: '#F8FF00', fontSize: 26, fontWeight: '700' }}>
-            Découvrir
+            Explorer
           </Text>
-          <Pressable 
+          <Pressable
             onPress={() => router.push('/')}
             style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' }}
           >
@@ -173,7 +235,7 @@ export default function Explorer() {
           </Pressable>
         </View>
         <Text style={{ color: '#ccc', fontSize: 14, marginBottom: 20 }}>
-          Découvrez et soutenez les propositions de vos collègues.
+          Explorez et soutenez les propositions de vos collègues.
         </Text>
 
         <View style={{ flexDirection: 'row', backgroundColor: '#111', borderRadius: 12, paddingHorizontal: 12, alignItems: 'center', marginBottom: 15, borderWidth: 1, borderColor: '#333' }}>
@@ -215,8 +277,8 @@ export default function Explorer() {
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
             {filtered.map((c) => (
-              <Pressable 
-                key={c.id} 
+              <Pressable
+                key={c.id}
                 onPress={() => { setSelected(c); setShowModal(true); }}
                 style={{ backgroundColor: '#111', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#333', overflow: 'hidden' }}
               >
@@ -234,7 +296,7 @@ export default function Explorer() {
                       useNativeControls
                       resizeMode={ResizeMode.CONTAIN}
                     />
-                    <Pressable 
+                    <Pressable
                       onPress={() => setZoomMedia({ url: c.video_url || '', type: 'video' })}
                       style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 20 }}
                     >
@@ -242,15 +304,15 @@ export default function Explorer() {
                     </Pressable>
                   </View>
                 )}
-                
+
                 <View style={{ padding: 16 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' }}>
                     <Text style={{ color: '#F8FF00', fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase' }}>{c.type}</Text>
-                    
+
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <Text style={{ color: '#666', fontSize: 12 }}>{new Date(c.created_at).toLocaleDateString()}</Text>
                       {role === 'admin' && (
-                        <Pressable 
+                        <Pressable
                           onPress={() => handleDeleteContribution(c.id)}
                           style={{ backgroundColor: 'rgba(255, 68, 68, 0.1)', padding: 6, borderRadius: 8 }}
                         >
@@ -264,13 +326,29 @@ export default function Explorer() {
                   <Text style={{ color: '#aaa', fontSize: 14, marginBottom: 15 }} numberOfLines={2}>{c.description}</Text>
 
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Pressable 
-                      onPress={() => handleLike(c.id)}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#444' }}
-                    >
-                      <MaterialIcons name="thumb-up" size={18} color="#F8FF00" />
-                      <Text style={{ color: '#fff', fontWeight: 'bold' }}>{c.votes_count || 0}</Text>
-                    </Pressable>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <Pressable
+                        onPress={() => handleVote(c.id, 'up')}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: userVotes[c.id] === 'up' ? 'rgba(248, 255, 0, 0.1)' : '#222', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'up' ? '#F8FF00' : '#444' }}
+                      >
+                        <MaterialIcons name="thumb-up" size={18} color={userVotes[c.id] === 'up' ? '#F8FF00' : '#888'} />
+                        <Text style={{ color: userVotes[c.id] === 'up' ? '#F8FF00' : '#fff', fontWeight: 'bold' }}>{c.votes_count || 0}</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleVote(c.id, 'down')}
+                        style={{ padding: 8, backgroundColor: userVotes[c.id] === 'down' ? 'rgba(248, 255, 0, 0.1)' : '#222', borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'down' ? '#F8FF00' : '#444' }}
+                      >
+                        <MaterialIcons name="thumb-down" size={18} color={userVotes[c.id] === 'down' ? '#F8FF00' : '#888'} />
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleVote(c.id, 'neutral')}
+                        style={{ padding: 8, backgroundColor: userVotes[c.id] === 'neutral' ? 'rgba(248, 255, 0, 0.1)' : '#222', borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'neutral' ? '#F8FF00' : '#444' }}
+                      >
+                        <MaterialIcons name="sentiment-neutral" size={18} color={userVotes[c.id] === 'neutral' ? '#F8FF00' : '#888'} />
+                      </Pressable>
+                    </View>
 
                     <View style={{ backgroundColor: 'rgba(248, 255, 0, 0.1)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: '#F8FF00' }}>
                       <Text style={{ color: '#F8FF00', fontWeight: 'bold', fontSize: 12 }}>Détails</Text>
@@ -300,7 +378,7 @@ export default function Explorer() {
                       useNativeControls
                       resizeMode={ResizeMode.CONTAIN}
                     />
-                    <Pressable 
+                    <Pressable
                       onPress={() => setZoomMedia({ url: selected.video_url || '', type: 'video' })}
                       style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.5)', padding: 8, borderRadius: 20 }}
                     >
@@ -310,14 +388,14 @@ export default function Explorer() {
                 )}
                 <Text style={{ color: '#F8FF00', fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>{selected.titre}</Text>
                 <Text style={{ color: '#ccc', fontSize: 16, lineHeight: 22, marginBottom: 20 }}>{selected.description}</Text>
-                
+
                 <View style={{ backgroundColor: '#222', padding: 15, borderRadius: 12, marginBottom: 20 }}>
-                   <Text style={{ color: '#888', marginBottom: 5 }}>Publié par :</Text>
-                   <Text style={{ color: '#fff', fontWeight: 'bold' }}>{selected.anonyme ? '👤 Agent Anonyme' : `👤 Un agent (${selected.role_agent})`}</Text>
+                  <Text style={{ color: '#888', marginBottom: 5 }}>Publié par :</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>{selected.anonyme ? '👤 Agent Anonyme' : `👤 Un agent (${selected.role_agent})`}</Text>
                 </View>
 
                 <Pressable onPress={() => setShowModal(false)} style={{ backgroundColor: '#F8FF00', padding: 15, borderRadius: 12, alignItems: 'center' }}>
-                   <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 16 }}>Fermer</Text>
+                  <Text style={{ color: '#000', fontWeight: 'bold', fontSize: 16 }}>Fermer</Text>
                 </Pressable>
               </ScrollView>
             )}
@@ -326,17 +404,17 @@ export default function Explorer() {
 
         <Modal visible={!!zoomMedia} transparent animationType="fade">
           <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-            <Pressable 
-              onPress={() => setZoomMedia(null)} 
+            <Pressable
+              onPress={() => setZoomMedia(null)}
               style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.2)', padding: 10, borderRadius: 25 }}
             >
               <MaterialIcons name="close" size={30} color="#fff" />
             </Pressable>
             {zoomMedia?.type === 'image' && (
-              <Image 
-                source={{ uri: zoomMedia.url }} 
-                style={{ width: '100%', height: '80%' }} 
-                resizeMode="contain" 
+              <Image
+                source={{ uri: zoomMedia.url }}
+                style={{ width: '100%', height: '80%' }}
+                resizeMode="contain"
               />
             )}
             {zoomMedia?.type === 'video' && (

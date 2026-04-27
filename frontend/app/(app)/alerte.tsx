@@ -196,7 +196,7 @@ export default function AlerteScreen() {
         lieu,
         description,
         gravite,
-        statut: 'en_cours',
+        statut: 'pending',
         anonyme,
         created_by: user.id,
         role_agent: roleAgent,

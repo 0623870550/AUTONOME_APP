@@ -62,7 +62,7 @@ export default function ToutesAlertesScreen() {
         setNotes(initialNotes);
       }
     } catch (err: any) {
-      console.error('Erreur loadAlertes:', err.message);
+      // Erreur silencieuse en prod
     } finally {
       setLoading(false);
     }
@@ -82,6 +82,7 @@ export default function ToutesAlertesScreen() {
       Alert.alert("Erreur", "Impossible de mettre à jour le statut.");
     } else {
       setAlertes(prev => prev.map(a => a.id === id ? { ...a, statut: nouveauStatut } : a));
+      // Le badge se mettra à jour via Realtime dans le Context
     }
   };
 
@@ -92,14 +93,17 @@ export default function ToutesAlertesScreen() {
 
     const { error } = await supabase
       .from('alerte')
-      .update({ comment_interne: finalComment })
+      .update({
+        comment_interne: finalComment,
+        statut: 'treated' // Automatique dès qu'on valide la note
+      })
       .eq('id', id);
 
     if (error) {
-      Alert.alert("Erreur", "Impossible de sauvegarder la note.");
+      Alert.alert("Erreur", "Impossible de sauvegarder.");
     } else {
-      if (Platform.OS === 'web') alert("Note enregistrée avec succès.");
-      else Alert.alert("Succès", "Note enregistrée avec succès.");
+      if (Platform.OS === 'web') alert("Validé et marqué comme traité.");
+      else Alert.alert("Succès", "Alerte traitée avec succès.");
       loadAlertes();
     }
   };
@@ -109,6 +113,8 @@ export default function ToutesAlertesScreen() {
       case 'en_cours': return { color: '#FF9500', label: 'En cours' };
       case 'analyse': return { color: '#FFD500', label: 'En Analyse' };
       case 'cloturee': return { color: '#34C759', label: 'Clôturée' };
+      case 'treated': return { color: '#4CAF50', label: 'Traité' };
+      case 'pending': return { color: '#FF3B30', label: 'Nouvelle' };
       default: return { color: '#8E8E93', label: 'Nouvelle' };
     }
   };
@@ -172,7 +178,7 @@ export default function ToutesAlertesScreen() {
                   </Pressable>
                 </View>
 
-                <Text style={styles.adminLabel}>Note administrative (visible par l'agent) :</Text>
+                <Text style={styles.adminLabel}>Détails de la prise en compte :</Text>
                 <View style={styles.noteContainer}>
                   <TextInput
                     value={notes[a.id] || ''}
