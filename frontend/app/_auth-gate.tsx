@@ -52,7 +52,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     const publicRoutes = ['login', 'signup', 'forgot-password', 'reset-password'];
     const currentRoute = segments[0] || '';
-    
+
     // Une route est protégée si elle n'est pas dans la liste publique
     const isProtected = !publicRoutes.includes(currentRoute);
 

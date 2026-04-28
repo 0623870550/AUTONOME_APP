@@ -82,7 +82,7 @@ export default function Signup() {
       pseudo: pseudo,
       prenom: prenom,
       nom: nom,
-      role_agent: typeAgent
+      type_agent: typeAgent
     });
 
     // 1️⃣ Création du compte Supabase Auth AVEC les métadonnées (Correction Supabase)
@@ -91,10 +91,10 @@ export default function Signup() {
       password: password,
       options: {
         data: {
-          pseudo: pseudo,
-          prenom: prenom,
-          nom: nom,
-          role_agent: typeAgent,
+          pseudo,
+          prenom,
+          nom,
+          type_agent: typeAgent,
         }
       }
     });
@@ -110,7 +110,7 @@ export default function Signup() {
       body: {
         user_id: authData.user.id,
         email,
-        role_agent: typeAgent,
+        type_agent: typeAgent,
       },
     });
 
