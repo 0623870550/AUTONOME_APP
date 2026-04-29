@@ -76,14 +76,6 @@ export default function Signup() {
 
     setLoading(true);
 
-    // 🕵️ LE MOUCHARD EST ICI : On regarde ce qu'on envoie AVANT de l'envoyer
-    console.log("🕵️ DONNÉES ENVOYÉES :", {
-      email: email,
-      pseudo: pseudo,
-      prenom: prenom,
-      nom: nom,
-      type_agent: typeAgent
-    });
 
     // 1️⃣ Création du compte Supabase Auth AVEC les métadonnées (Correction Supabase)
     const { data: authData, error: authError } = await supabase.auth.signUp({

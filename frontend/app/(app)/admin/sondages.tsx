@@ -109,7 +109,7 @@ export default function AdminSondages() {
 
     let body;
     if (Platform.OS === 'web') {
-      body = file.file || file; 
+      body = file.file || file;
     } else {
       const response = await fetch(uriToUpload);
       body = await response.blob();
@@ -214,15 +214,43 @@ export default function AdminSondages() {
   };
 
   const deleteSondage = (id: string) => {
+    console.log("🔥 BOUTON SUPPRIMER CLIQUÉ pour l'ID:", id);
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Supprimer définitivement ce sondage ?');
+      if (!confirmed) return;
+
+      (async () => {
+        console.log("🚀 TENTATIVE SUPPRESSION SONDAGE ID:", id);
+        const { error } = await supabase.from('sondages').delete().eq('id', id);
+
+        if (error) {
+          console.error("ERREUR SUPPRESSION:", error);
+          alert('ERREUR: ' + error.message);
+        } else {
+          console.log("✅ SUPPRESSION RÉUSSIE");
+          fetchSondages();
+        }
+      })();
+      return;
+    }
+
     Alert.alert('Confirmation', 'Supprimer définitivement ce sondage ?', [
       { text: 'Annuler', style: 'cancel' },
       {
         text: 'Supprimer',
         style: 'destructive',
         onPress: async () => {
+          console.log("🚀 TENTATIVE SUPPRESSION SONDAGE ID:", id);
           const { error } = await supabase.from('sondages').delete().eq('id', id);
-          if (error) Alert.alert('Erreur', error.message);
-          else fetchSondages();
+
+          if (error) {
+            console.error("ERREUR SUPPRESSION:", error);
+            Alert.alert('DEBUG DELETE', JSON.stringify(error, null, 2));
+          } else {
+            console.log("✅ SUPPRESSION RÉUSSIE");
+            fetchSondages();
+          }
         },
       },
     ]);
@@ -246,14 +274,14 @@ export default function AdminSondages() {
           {sondages.map((s) => (
             <View key={s.id} style={[styles.card, s.is_archived && { opacity: 0.6 }]}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardType}>{s.type.toUpperCase()}</Text>
+                <Text style={styles.cardType}>{s.type?.toUpperCase() || 'SONDAGE'}</Text>
                 <Text style={[styles.cardTarget, { color: s.target === 'ALL' ? '#aaa' : '#F8FF00' }]}>
                   Cible: {s.target}
                 </Text>
               </View>
               <Text style={styles.cardQuestion}>{s.question}</Text>
               {s.is_archived && <Text style={styles.archivedLabel}>📁 Archivé</Text>}
-              
+
               <View style={styles.actions}>
                 <Pressable
                   style={[styles.actionBtn, { borderColor: '#555' }]}
@@ -320,7 +348,7 @@ export default function AdminSondages() {
                     placeholder="URL Image (ex: https://...)"
                     placeholderTextColor="#666"
                   />
-                  
+
                   <View style={styles.row}>
                     <Pressable onPress={() => pickFile('image')} style={[styles.mediaMiniBtn, fileType === 'image' && styles.mediaMiniBtnActive]}>
                       <Text style={[styles.mediaMiniText, fileType === 'image' && styles.mediaMiniTextActive]}>🖼️ Photo</Text>
