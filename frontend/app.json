@@ -5,18 +5,19 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "autonome",
-    "icon": "./app/assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./app/assets/images/splash-icon.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8FF00"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
+      "icon": "./assets/icon.png",
       "bundleIdentifier": "com.autonome.app",
       "infoPlist": {
         "LSApplicationQueriesSchemes": [
@@ -27,8 +28,8 @@
     "android": {
       "package": "com.autonome.app",
       "adaptiveIcon": {
-        "foregroundImage": "./app/assets/images/android-icon-foreground.png",
-        "backgroundColor": "#F8FF00"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#000000"
       },
       "intentFilters": [
         {
@@ -48,7 +49,7 @@
       ]
     },
     "web": {
-      "favicon": "./app/assets/images/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
