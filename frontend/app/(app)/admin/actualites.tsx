@@ -26,7 +26,9 @@ export default function AdminActualites() {
   const [content, setContent] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [target, setTarget] = useState<'SPP' | 'PATS' | 'ALL'>('ALL');
   const [loading, setLoading] = useState(false);
+
 
   // État pour la liste des actualités
   const [actualites, setActualites] = useState<any[]>([]);
@@ -65,6 +67,7 @@ export default function AdminActualites() {
   };
 
   const handlePublish = async () => {
+    console.log("Tentative de publication...");
     if (!title.trim() || !content.trim()) {
       return Alert.alert('Erreur', 'Le titre et le contenu sont obligatoires.');
     }
@@ -73,16 +76,22 @@ export default function AdminActualites() {
 
     const publishData = async (imageUrl: string | null) => {
       try {
-        const { error } = await supabase.from('actualites').insert([
-          {
-            title: title.trim(),
-            content: content.trim(),
-            image_url: imageUrl,
-            link_url: linkUrl.trim() || null,
-            is_published: true,
-            created_by: session?.user.id,
-          },
-        ]);
+        const { error } = await supabase
+          .from('actualites')
+          .insert({ 
+              title: title.trim(), 
+              content: content.trim(), 
+              image_url: imageUrl || null, 
+              link_url: linkUrl || null, 
+              is_published: true, 
+              category: target,
+              created_by: (await supabase.auth.getUser()).data.user?.id 
+          });
+
+
+
+
+
 
         if (error) throw error;
 
@@ -93,6 +102,7 @@ export default function AdminActualites() {
         setSelectedFile(null);
         fetchActualites();
       } catch (insertError: any) {
+        console.error("ERREUR INSERTION ACTUALITÉ:", insertError);
         Alert.alert('Erreur', insertError.message);
       } finally {
         setLoading(false);
@@ -190,6 +200,20 @@ export default function AdminActualites() {
               autoCapitalize="none"
             />
 
+            <Text style={styles.label}>Cible</Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {['ALL', 'SPP', 'PATS'].map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setTarget(t as any)}
+                  style={[styles.chip, target === t && styles.chipActive]}
+                >
+                  <Text style={[styles.chipText, target === t && styles.chipTextActive]}>{t}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+
             <Pressable onPress={pickDocument} style={styles.fileBtn}>
               <Text style={styles.fileBtnText}>📎 Joindre une photo</Text>
             </Pressable>
@@ -250,4 +274,9 @@ const styles = StyleSheet.create({
   newsList: { gap: 10 },
   newsCardRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#111', padding: 15, borderRadius: 10 },
   newsTitleRow: { color: '#fff', flex: 1, marginRight: 10 },
+  chip: { flex: 1, paddingVertical: 8, borderRadius: 12, backgroundColor: '#000', borderWidth: 1, borderColor: '#333', alignItems: 'center' },
+  chipActive: { backgroundColor: '#F8FF00', borderColor: '#F8FF00' },
+  chipText: { color: '#888', fontWeight: 'bold', fontSize: 12 },
+  chipTextActive: { color: '#000' },
 });
+

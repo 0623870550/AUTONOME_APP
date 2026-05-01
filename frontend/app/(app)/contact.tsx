@@ -136,6 +136,43 @@ export default function Contact() {
           </Pressable>
         </View>
 
+        {/* SECTION RGPD COMPACTE */}
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ color: '#F8FF00', fontSize: 14, fontWeight: '700', marginBottom: 10, opacity: 0.8 }}>
+            RGPD & Données personnelles
+          </Text>
+          
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Accès', sub: '[RGPD] Demande d\'accès', body: 'Je souhaite recevoir une copie de mes données.' },
+              { label: 'Rectifier', sub: '[RGPD] Rectification', body: 'Je souhaite modifier les informations suivantes :' },
+              { label: 'Supprimer', sub: '[RGPD] Suppression', body: 'Je demande la suppression de mon compte et de mes données.' },
+            ].map((btn) => (
+              <Pressable
+                key={btn.label}
+                onPress={() => openLink(`mailto:contact@syndicatautonomesdmis.com?subject=${encodeURIComponent(btn.sub)}&body=${encodeURIComponent(btn.body)}`)}
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#444',
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                  backgroundColor: '#050505'
+                }}
+              >
+                <Text style={{ color: '#ccc', fontSize: 12, fontWeight: '600' }}>{btn.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          
+          <Pressable onPress={() => openLink('https://www.syndicatautonomesdmis.com/mentions-legales/')} style={{ marginTop: 12 }}>
+            <Text style={{ color: '#555', fontSize: 10, textDecorationLine: 'underline' }}>
+              En savoir plus sur notre politique de confidentialité
+            </Text>
+          </Pressable>
+        </View>
+
+
         {/* CTA FINAL */}
         <View style={{ marginBottom: 80 }}>
           <Text style={{ color: '#ccc', marginBottom: 12 }}>

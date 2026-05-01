@@ -36,16 +36,16 @@ const PollMedia = ({ sondage }: { sondage: any }) => {
     <View style={{ marginBottom: 15 }}>
       {hasValidImage && (
         <Pressable onPress={() => WebBrowser.openBrowserAsync(sondage.image_url)}>
-          <Image 
-            source={{ uri: sondage.image_url }} 
-            style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 10, backgroundColor: '#111' }} 
+          <Image
+            source={{ uri: sondage.image_url }}
+            style={{ width: '100%', height: 200, borderRadius: 10, marginBottom: 10, backgroundColor: '#111' }}
             resizeMode="contain"
           />
         </Pressable>
       )}
-      
+
       {sondage.video_url && (
-        <Pressable 
+        <Pressable
           onPress={() => WebBrowser.openBrowserAsync(sondage.video_url)}
           style={{ backgroundColor: '#222', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#333' }}
         >
@@ -58,7 +58,7 @@ const PollMedia = ({ sondage }: { sondage: any }) => {
       )}
 
       {sondage.document_url && (
-        <Pressable 
+        <Pressable
           onPress={handleOpenDoc}
           style={{ backgroundColor: '#222', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: '#333' }}
         >
@@ -76,12 +76,12 @@ const PollMedia = ({ sondage }: { sondage: any }) => {
 const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myVotes: Record<string, any>, globalVotes: any[] }) => {
   const hasVoted = !!myVotes[sondage?.id];
   const { width } = useWindowDimensions();
-  
+
   if (!sondage || !sondage.questions) return null;
-  
+
   const pollVotes = globalVotes.filter(v => v.sondage_id === sondage.id);
   const totalVotesCount = pollVotes.length;
-  
+
   const colors = ['#F8FF00', '#FFCC00', '#FF9900', '#aaaaaa', '#555555'];
 
   return (
@@ -89,7 +89,7 @@ const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myV
       <Text style={styles.votedLabel}>
         {hasVoted ? '✅ Tu as participé' : '📁 Sondage terminé'}
       </Text>
-      
+
       <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold', marginBottom: 20 }}>
         📊 Voici ce que pensent tes collègues ({totalVotesCount} votes au total)
       </Text>
@@ -136,7 +136,7 @@ const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myV
         return (
           <View key={q.id || idx} style={{ marginBottom: 30 }}>
             <Text style={{ color: '#F8FF00', fontWeight: 'bold', marginBottom: 10 }}>{idx + 1}. {q.label}</Text>
-            
+
             {chartData.length > 0 ? (
               <View style={{ alignItems: 'center' }}>
                 <PieChart
@@ -150,7 +150,7 @@ const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myV
                   center={[10, 0]}
                   absolute
                 />
-                
+
                 {/* Petit rappel textuel des pourcentages sous le graph si besoin */}
                 <View style={{ width: '100%', marginTop: 10 }}>
                   {options.map((opt: string) => {
@@ -204,7 +204,7 @@ export default function Sondages() {
 
   const loadData = async () => {
     setLoading(true);
-    
+
     // 1. Fetch polls based on role segmentation
     // 1. Fetch polls and agent role for precise filtering
     const { data: agentData } = await supabase
@@ -217,20 +217,22 @@ export default function Sondages() {
 
     const { data: polls, error: pError } = await supabase
       .from('sondages')
-      .select('*, sondage_options(*)')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (pError) {
       console.error('Erreur Supabase Sondages:', pError);
     } else {
-      // Filtrage dynamique : on affiche les sondages ciblés ou globaux
+      // Filtrage local pour le cloisonnement
       const filtered = (polls || []).filter(p => {
-        const isTargetMatch = p.target === 'ALL' || p.target === currentRole || !p.target || p.target === '';
-        return isTargetMatch;
+        const pTarget = (p.target || '').toUpperCase().trim();
+        const uRole = (currentRole || '').toUpperCase().trim();
+        return pTarget === 'ALL' || pTarget === uRole || !pTarget || (uRole && uRole.includes('SPP OU PATS'));
       });
 
       // On sépare Actuels et Archivés
       const active = filtered.filter(p => !p.is_archived && (p.is_active !== false));
+
       const archived = filtered.filter(p => p.is_archived);
 
       setActiveSondages(active);
@@ -288,7 +290,7 @@ export default function Sondages() {
 
   const renderPollContent = (s: any) => {
     const hasVoted = !!myVotes[s.id];
-    
+
     // IF ALREADY VOTED - SHOW RESULTS
     if (hasVoted || s.is_archived) {
       return <RenderStats sondage={s} myVotes={myVotes} globalVotes={globalVotes} />;
@@ -312,21 +314,22 @@ export default function Sondages() {
     return (
       <View style={styles.formContainer}>
         {questions.map((q: any, idx: number) => (
-          <View key={q.id || idx} style={{ marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#222', pb: 15 }}>
+          <View key={q.id || idx} style={{ marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#222', paddingBottom: 15 }}>
+
             <Text style={{ color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 12 }}>
               {idx + 1}. {q.label}
             </Text>
 
             {q.type === 'yn' && (
               <View style={styles.row}>
-                <Pressable 
-                  style={[styles.voteBtnSmall, currentResponses[q.id] === 'OUI' && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== 'OUI' && { backgroundColor: '#333' }]} 
+                <Pressable
+                  style={[styles.voteBtnSmall, currentResponses[q.id] === 'OUI' && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== 'OUI' && { backgroundColor: '#333' }]}
                   onPress={() => updateResponse(q.id, 'OUI')}
                 >
                   <Text style={[styles.voteBtnText, { color: currentResponses[q.id] === 'OUI' ? '#000' : '#fff' }]}>OUI</Text>
                 </Pressable>
-                <Pressable 
-                  style={[styles.voteBtnSmall, currentResponses[q.id] === 'NON' && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== 'NON' && { backgroundColor: '#333' }]} 
+                <Pressable
+                  style={[styles.voteBtnSmall, currentResponses[q.id] === 'NON' && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== 'NON' && { backgroundColor: '#333' }]}
                   onPress={() => updateResponse(q.id, 'NON')}
                 >
                   <Text style={[styles.voteBtnText, { color: currentResponses[q.id] === 'NON' ? '#000' : '#fff' }]}>NON</Text>
@@ -337,9 +340,9 @@ export default function Sondages() {
             {(q.type === 'qcm' || q.type === 'dropdown') && (
               <View style={{ gap: 8 }}>
                 {q.options?.map((opt: string) => (
-                  <Pressable 
-                    key={opt} 
-                    style={[styles.voteBtnLong, currentResponses[q.id] === opt && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== opt && { backgroundColor: '#222', borderWidth: 1, borderColor: '#444' }]} 
+                  <Pressable
+                    key={opt}
+                    style={[styles.voteBtnLong, currentResponses[q.id] === opt && { backgroundColor: '#F8FF00' }, currentResponses[q.id] !== opt && { backgroundColor: '#222', borderWidth: 1, borderColor: '#444' }]}
                     onPress={() => updateResponse(q.id, opt)}
                   >
                     <Text style={[styles.voteBtnText, { color: currentResponses[q.id] === opt ? '#000' : '#fff' }]}>{opt}</Text>
@@ -363,7 +366,7 @@ export default function Sondages() {
 
         <View style={styles.anonymousRow}>
           <Text style={{ color: '#aaa' }}>Rester anonyme pour les collègues ?</Text>
-          <Pressable 
+          <Pressable
             style={[styles.toggle, anonymousFlags[s.id] && styles.toggleActive]}
             onPress={() => setAnonymousFlags(p => ({ ...p, [s.id]: !p[s.id] }))}
           >
@@ -371,8 +374,8 @@ export default function Sondages() {
           </Pressable>
         </View>
 
-        <Pressable 
-          style={[styles.voteBtnLong, { marginTop: 20, backgroundColor: '#F8FF00' }]} 
+        <Pressable
+          style={[styles.voteBtnLong, { marginTop: 20, backgroundColor: '#F8FF00' }]}
           onPress={() => handleVote(s.id, currentResponses)}
         >
           <Text style={[styles.voteBtnText, { fontSize: 18 }]}>🚀 Envoyer mon vote</Text>
@@ -393,10 +396,10 @@ export default function Sondages() {
     <AuthGate>
       <PageContainer>
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-          
+
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <Text style={styles.mainTitle}>Sondages</Text>
-            <Pressable 
+            <Pressable
               onPress={() => router.push('/')}
               style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' }}
             >
@@ -404,9 +407,9 @@ export default function Sondages() {
             </Pressable>
           </View>
           <Text style={styles.subtitle}>
-            {roleAgent === 'SPP' ? '🚒 Espace Sapeurs-Pompiers' : 
-             roleAgent === 'PATS' ? '🏢 Espace PATS' : 
-             '🌍 Espace Tous Agents'}
+            {roleAgent === 'SPP' ? '🚒 Espace Sapeurs-Pompiers' :
+              roleAgent === 'PATS' ? '🏢 Espace PATS' :
+                '🌍 Espace Tous Agents'}
           </Text>
 
           <View style={styles.tabContainer}>
@@ -422,7 +425,7 @@ export default function Sondages() {
             <View key={s.id} style={styles.pollCard}>
               <Text style={styles.pollQuestion}>🗳️ {s.question}</Text>
               {s.description ? <Text style={styles.pollDesc}>{s.description}</Text> : null}
-              
+
               <PollMedia sondage={s} />
 
               {renderPollContent(s)}

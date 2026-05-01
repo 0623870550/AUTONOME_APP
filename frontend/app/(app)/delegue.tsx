@@ -34,13 +34,14 @@ export default function DeleguesScreen() {
 
   const loadDelegues = async () => {
     setLoading(true);
-    // On récupère les admins et délégués filtrés par rôle_agent
+    // On récupère les admins, délégués et l'utilisateur lui-même filtrés par rôle_agent
     const { data, error } = await supabase
       .from('agents')
       .select('*')
-      .in('role', ['admin', 'delegue'])
+      .or(`role.in.(admin,delegue),id.eq.${session?.user.id}`)
       .eq('role_agent', roleAgent)
       .order('nom', { ascending: true });
+
 
     if (!error) {
       const all = data || [];
@@ -119,7 +120,8 @@ export default function DeleguesScreen() {
                 </View>
                 <View style={styles.info}>
                   <Text style={styles.name}>{myProfile.prenom} {myProfile.nom}</Text>
-                  <Text style={[styles.specialite, { color: '#F8FF00' }]}>🛡️ {myProfile.role === 'admin' ? 'Administrateur' : 'Délégué'}</Text>
+                  <Text style={[styles.specialite, { color: '#F8FF00' }]}>🛡️ {myProfile.role === 'admin' ? 'Administrateur' : (myProfile.role === 'delegue' ? 'Délégué' : 'Agent')}</Text>
+
                 </View>
               </View>
             </View>

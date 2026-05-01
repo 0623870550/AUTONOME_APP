@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
 import { supabase } from 'lib/supabase';
 import { useEffect, useState, useRef } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+
 import {
   Animated,
   Image,
@@ -17,35 +19,82 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../context/SupabaseSessionProvider';
+import { useAgentRole } from '../../context/AgentRoleContext';
+
 
 export default function Page() {
   const { session } = useSession();
+  const { roleAgent } = useAgentRole();
   const router = useRouter();
+
   const [agent, setAgent] = useState<any>(null);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNews, setSelectedNews] = useState<any>(null);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
+  const shimmerAnim = useRef(new Animated.Value(-1)).current;
+
+  useEffect(() => {
+    const startShimmer = () => {
+      shimmerAnim.setValue(-1);
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.delay(3000),
+      ]).start(() => startShimmer());
+    };
+    startShimmer();
+  }, [shimmerAnim]);
+
+  const translateX = shimmerAnim.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-80, 80],
+  });
+
 
   useEffect(() => {
     if (session === undefined || session === null) return;
+
+
     const fetchData = async () => {
       try {
         const { data: agentData } = await supabase.from('agents').select('*').eq('id', session.user.id).single();
         if (agentData) setAgent(agentData);
 
-        const { data: newsData } = await supabase.from('actualites').select('*').eq('is_published', true).order('created_at', { ascending: false }).limit(3);
-        setNews(newsData || []);
+        const { data, error } = await supabase
+          .from('actualites')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        const filteredData = (data || []).filter(item => {
+          const itemCat = String(item.category || '').toUpperCase();
+          const userRole = String(roleAgent || '').toUpperCase();
+          return itemCat === userRole || itemCat === 'ALL';
+        }).slice(0, 3);
+        
+        console.log("ACTUS FILTRÉES:", filteredData);
+
+        setNews(filteredData);
+
       } catch (e) { console.error(e); } finally { setLoading(false); }
     };
     fetchData();
-  }, [session]);
+  }, [session, roleAgent]);
+
 
   const openLink = (url: string) => { if (url) Linking.openURL(url); };
 
   if (!agent || loading) {
+
     return (<View style={styles.centered}><ActivityIndicator size="large" color="#F8FF00" /></View>);
   }
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,7 +102,29 @@ export default function Page() {
 
         {/* EN-TÊTE */}
         <View style={styles.header}>
-          <Image source={require('../assets/logo_autonome_sdmis.png')} style={styles.logoImage} resizeMode="contain" />
+          <View style={styles.logoContainer}>
+            <Image source={require('../assets/logo_autonome_sdmis.png')} style={styles.logoImage} resizeMode="contain" />
+            <Animated.View 
+              style={[
+                StyleSheet.absoluteFill, 
+                { 
+                  transform: [{ translateX }, { rotate: '45deg' }],
+                  width: '200%',
+                  height: '200%',
+                  top: '-50%',
+                  left: '-50%',
+                }
+              ]}
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ flex: 1 }}
+              />
+            </Animated.View>
+          </View>
+
           <View style={styles.headerTextContainer}>
             <Text style={styles.welcomeText}>Bonjour,</Text>
             <Text style={styles.nameText}>{agent.prenom} {agent.nom} 👋</Text>
@@ -160,7 +231,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
   scrollContent: { padding: 20 },
   header: { flexDirection: 'row', backgroundColor: '#111', padding: 15, borderRadius: 16, marginBottom: 20, borderWidth: 1, borderColor: '#333', alignItems: 'center' },
-  logoImage: { width: 50, height: 50, marginRight: 15 },
+  logoContainer: { width: 50, height: 50, marginRight: 15, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  logoImage: { width: 50, height: 50 },
   headerTextContainer: { flex: 1 },
   welcomeText: { color: '#aaa', fontSize: 13 },
   nameText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
