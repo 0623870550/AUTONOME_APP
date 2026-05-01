@@ -68,91 +68,66 @@ export default function AdminActualites() {
 
   const handlePublish = async () => {
     console.log("Tentative de publication...");
-    if (!title.trim() || !content.trim()) {
-      return Alert.alert('Erreur', 'Le titre et le contenu sont obligatoires.');
-    }
+    const { data: userData } = await supabase.auth.getUser();
+    const categoryValue = String(target || 'ALL').toUpperCase();
+    console.log("VALEUR ENVOYÉE POUR CATEGORY:", categoryValue);
 
-    setLoading(true);
+    let imageUrl: string | null = null;
 
-    const publishData = async (imageUrl: string | null) => {
-      try {
-        const { error } = await supabase
-          .from('actualites')
-          .insert({ 
-              title: title.trim(), 
-              content: content.trim(), 
-              image_url: imageUrl || null, 
-              link_url: linkUrl || null, 
-              is_published: true, 
-              category: target,
-              created_by: (await supabase.auth.getUser()).data.user?.id 
-          });
-
-
-
-
-
-
-        if (error) throw error;
-
-        Alert.alert('Succès', 'Actualité publiée !');
-        setTitle('');
-        setContent('');
-        setLinkUrl('');
-        setSelectedFile(null);
-        fetchActualites();
-      } catch (insertError: any) {
-        console.error("ERREUR INSERTION ACTUALITÉ:", insertError);
-        Alert.alert('Erreur', insertError.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    // Upload de l'image si un fichier est sélectionné
     if (selectedFile) {
       try {
         const fileName = `${Date.now()}.jpg`;
-
         const xhr = new XMLHttpRequest();
         const blob: Blob = await new Promise((resolve, reject) => {
-          xhr.onload = function () {
-            resolve(xhr.response);
-          };
-          xhr.onerror = function (e) {
-            reject(new TypeError("Échec de la lecture locale du fichier (Network request failed)."));
-          };
-          xhr.responseType = "blob";
-          xhr.open("GET", selectedFile.uri, true);
+          xhr.onload = () => resolve(xhr.response);
+          xhr.onerror = () => reject(new TypeError("Erreur de lecture du fichier."));
+          xhr.responseType = 'blob';
+          xhr.open('GET', selectedFile.uri, true);
           xhr.send(null);
         });
-
-        const { data, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('actualites-media')
-          .upload(fileName, blob, {
-            contentType: selectedFile.mimeType || 'image/jpeg',
-            upsert: true
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from('actualites-media')
-          .getPublicUrl(fileName);
-
-        publishData(publicUrlData.publicUrl);
-      } catch (uploadError: any) {
-        setLoading(false);
-        Alert.alert(
-          'Erreur Upload',
-          uploadError.message || "Échec de l'envoi de l'image. Vérifiez votre connexion internet."
-        );
+          .upload(fileName, blob, { contentType: selectedFile.mimeType || 'image/jpeg', upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: publicUrlData } = supabase.storage.from('actualites-media').getPublicUrl(fileName);
+        imageUrl = publicUrlData.publicUrl;
+      } catch (uploadErr: any) {
+        Alert.alert('Erreur Upload', uploadErr.message);
+        return;
       }
+    }
+
+    const { data, error } = await supabase
+      .from('actualites')
+      .insert([{ 
+        title: title.trim(), 
+        content: content.trim(), 
+        category: categoryValue, 
+        image_url: imageUrl,
+        link_url: linkUrl.trim() || null,
+        created_by: userData.user?.id,
+        is_published: true 
+      }]);
+
+    if (error) {
+      console.log("--- DEBUG ERREUR ---");
+      console.log("Message:", error.message);
+      console.log("Détails:", error.details);
+      console.log("Code:", error.code);
+      console.log("--------------------");
+      Alert.alert('Erreur', error.message);
     } else {
-      publishData(null);
+      console.log("SUCCÈS !");
+      Alert.alert('Succès', 'Actualité publiée !');
+      setTitle('');
+      setContent('');
+      setLinkUrl('');
+      setSelectedFile(null);
+      fetchActualites();
     }
   };
+
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('actualites').delete().eq('id', id);

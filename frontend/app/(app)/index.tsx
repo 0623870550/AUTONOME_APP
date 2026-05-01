@@ -88,7 +88,12 @@ export default function Page() {
   }, [session, roleAgent]);
 
 
-  const openLink = (url: string) => { if (url) Linking.openURL(url); };
+  const openLink = (url: string) => {
+    if (!url) return;
+    const finalUrl = url.startsWith('http') ? url : `https://${url}`;
+    Linking.openURL(finalUrl);
+  };
+
 
   if (!agent || loading) {
 
