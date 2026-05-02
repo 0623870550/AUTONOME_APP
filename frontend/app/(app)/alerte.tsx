@@ -237,9 +237,17 @@ export default function AlerteScreen() {
   return (
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
-        <Text style={{ fontSize: 26, fontWeight: 'bold', marginBottom: 20, color: '#FFF' }}>
-          🚨 Déclarer une alerte
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#FFF' }}>
+            🚨 Déclarer une alerte
+          </Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' }}
+          >
+            <Text style={{ color: '#aaa', fontSize: 12, fontWeight: 'bold' }}>✕ Quitter</Text>
+          </Pressable>
+        </View>
 
         <Text style={{ fontWeight: '600', marginBottom: 6, color: '#FFF' }}>Type d’alerte</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 }}>
