@@ -19,13 +19,14 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { user_id, email } = await req.json();
+    const { user_id, email, role_agent } = await req.json();
 
     const { error } = await supabase
       .from("agents")
       .insert({
         id: user_id,
         email,
+        role_agent,
         created_at: new Date().toISOString(),
       });
 
