@@ -27,9 +27,89 @@ interface Question {
   options: string[];
 }
 
+const RenderStatsAdmin = ({ sondage, globalVotes }: { sondage: any, globalVotes: any[] }) => {
+  if (!sondage || !sondage.questions) return null;
+
+  const pollVotes = globalVotes.filter(v => v.sondage_id === sondage.id);
+  const totalVotesCount = pollVotes.length;
+
+  const getReponse = (v: any, qId: string) => {
+    let rep = v.reponses;
+    if (typeof rep === 'string') {
+      try { rep = JSON.parse(rep); } catch (e) { rep = {}; }
+    }
+    return rep ? rep[qId] : null;
+  };
+
+  return (
+    <View style={{ marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#333' }}>
+      <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold', marginBottom: 15 }}>
+        📊 Résultats ({totalVotesCount} {totalVotesCount > 1 ? 'votes' : 'vote'})
+      </Text>
+
+      {sondage.questions.map((q: any, idx: number) => {
+        if (q.type === 'text') {
+          const textResponses = pollVotes
+            .map(v => getReponse(v, q.id))
+            .filter(txt => txt && typeof txt === 'string' && txt.trim() !== '');
+
+          return (
+            <View key={q.id || idx} style={{ marginBottom: 15 }}>
+              <Text style={{ color: '#aaa', fontWeight: 'bold', marginBottom: 8, fontSize: 13 }}>{idx + 1}. {q.label}</Text>
+              <Text style={{ color: '#888', fontStyle: 'italic', fontSize: 12 }}>
+                {textResponses.length} {textResponses.length > 1 ? 'réponses' : 'réponse'} textuelle(s)
+              </Text>
+            </View>
+          );
+        }
+
+        const options = q.type === 'yn' ? ['OUI', 'NON'] : (q.options || []);
+
+        return (
+          <View key={q.id || idx} style={{ marginBottom: 20 }}>
+            <Text style={{ color: '#aaa', fontWeight: 'bold', marginBottom: 10, fontSize: 13 }}>{idx + 1}. {q.label}</Text>
+
+            <View style={{ gap: 10 }}>
+              {options.map((opt: string) => {
+                const count = pollVotes.filter(v => {
+                  const val = getReponse(v, q.id);
+                  if (!val) return false;
+                  if (Array.isArray(val)) {
+                    return val.some((item: string) => item.trim().toUpperCase() === opt.trim().toUpperCase());
+                  }
+                  return String(val).trim().toUpperCase() === opt.trim().toUpperCase();
+                }).length;
+                const percent = totalVotesCount > 0 ? Math.round((count / totalVotesCount) * 100) : 0;
+                
+                return (
+                  <View key={opt}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ color: '#fff', fontSize: 13 }}>{opt}</Text>
+                      <Text style={{ color: '#F8FF00', fontSize: 13, fontWeight: 'bold' }}>{percent}% ({count})</Text>
+                    </View>
+                    <View style={{ height: 8, backgroundColor: '#444', borderRadius: 4, overflow: 'hidden' }}>
+                      <View style={{ 
+                        height: '100%', 
+                        backgroundColor: '#F8FF00', 
+                        width: `${percent}%`,
+                        borderRadius: 4
+                      }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
 export default function AdminSondages() {
   const router = useRouter();
   const [sondages, setSondages] = useState<any[]>([]);
+  const [globalVotes, setGlobalVotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -59,6 +139,10 @@ export default function AdminSondages() {
       .order('created_at', { ascending: false });
 
     if (!error) setSondages(data || []);
+
+    const { data: votesData } = await supabase.from('sondage_votes').select('*');
+    if (votesData) setGlobalVotes(votesData);
+
     setLoading(false);
   };
 
@@ -210,7 +294,7 @@ export default function AdminSondages() {
       .eq('id', id);
 
     if (error) Alert.alert('Erreur', error.message);
-    else fetchSondages();
+    else await fetchSondages();
   };
 
   const deleteSondage = (id: string) => {
@@ -229,7 +313,7 @@ export default function AdminSondages() {
           alert('ERREUR: ' + error.message);
         } else {
           console.log("✅ SUPPRESSION RÉUSSIE");
-          fetchSondages();
+          await fetchSondages();
         }
       })();
       return;
@@ -249,7 +333,7 @@ export default function AdminSondages() {
             Alert.alert('DEBUG DELETE', JSON.stringify(error, null, 2));
           } else {
             console.log("✅ SUPPRESSION RÉUSSIE");
-            fetchSondages();
+            await fetchSondages();
           }
         },
       },
@@ -296,6 +380,8 @@ export default function AdminSondages() {
                   <Text style={{ color: '#F44' }}>Supprimer</Text>
                 </Pressable>
               </View>
+
+              <RenderStatsAdmin sondage={s} globalVotes={globalVotes} />
             </View>
           ))}
         </ScrollView>

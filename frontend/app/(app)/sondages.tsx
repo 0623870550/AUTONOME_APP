@@ -11,7 +11,6 @@ import {
   useWindowDimensions,
   Image,
 } from 'react-native';
-import { PieChart } from 'react-native-chart-kit';
 import PageContainer from '../../components/PageContainer';
 import AuthGate from '../_auth-gate';
 import { supabase } from '../../lib/supabase';
@@ -20,6 +19,11 @@ import { useAgentPermission } from '../../context/AgentPermissionContext';
 import { useSession } from '../../context/SupabaseSessionProvider';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+
+const getReponse = (v: any, qId: string) => {
+  if (!v || !v.reponses) return null;
+  return v.reponses[qId];
+};
 
 const PollMedia = ({ sondage }: { sondage: any }) => {
   if (!sondage) return null;
@@ -75,35 +79,30 @@ const PollMedia = ({ sondage }: { sondage: any }) => {
 
 const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myVotes: Record<string, any>, globalVotes: any[] }) => {
   const hasVoted = !!myVotes[sondage?.id];
-  const { width } = useWindowDimensions();
 
   if (!sondage || !sondage.questions) return null;
 
   const pollVotes = globalVotes.filter(v => v.sondage_id === sondage.id);
   const totalVotesCount = pollVotes.length;
 
-  const colors = ['#F8FF00', '#FFCC00', '#FF9900', '#aaaaaa', '#555555'];
-
   return (
     <View style={styles.resultsContainer}>
       <Text style={styles.votedLabel}>
-        {hasVoted ? '✅ Tu as participé' : '📁 Sondage terminé'}
+        {hasVoted ? '✅ Merci pour votre participation' : '📁 Sondage terminé'}
       </Text>
 
       <Text style={{ color: '#fff', fontSize: 15, fontWeight: 'bold', marginBottom: 20 }}>
-        📊 Voici ce que pensent tes collègues ({totalVotesCount} votes au total)
+        📊 Résultats ({totalVotesCount} {totalVotesCount > 1 ? 'votes' : 'vote'})
       </Text>
 
       {sondage.questions.map((q: any, idx: number) => {
-        // Pour chaque question, on agrège les données
         if (q.type === 'text') {
-          // Liste des réponses textuelles
           const textResponses = pollVotes
-            .map(v => v.reponses?.[q.id])
-            .filter(txt => txt && txt.trim() !== '');
+            .map(v => getReponse(v, q.id))
+            .filter(txt => txt && typeof txt === 'string' && txt.trim() !== '');
 
           return (
-            <View key={q.id || idx} style={{ marginBottom: 30 }}>
+            <View key={q.id || idx} style={{ marginBottom: 25 }}>
               <Text style={{ color: '#F8FF00', fontWeight: 'bold', marginBottom: 10 }}>{idx + 1}. {q.label}</Text>
               {textResponses.length > 0 ? (
                 <View style={{ gap: 8 }}>
@@ -114,61 +113,48 @@ const RenderStats = ({ sondage, myVotes, globalVotes = [] }: { sondage: any, myV
                   ))}
                 </View>
               ) : (
-                <Text style={{ color: '#666', fontStyle: 'italic' }}>Aucun commentaire pour le moment.</Text>
+                <Text style={{ color: '#666', fontStyle: 'italic' }}>Aucune réponse pour le moment.</Text>
               )}
             </View>
           );
         }
 
-        // Pour QCM / Oui-Non : On prépare le graphique
         const options = q.type === 'yn' ? ['OUI', 'NON'] : (q.options || []);
-        const chartData = options.map((opt: string, oIdx: number) => {
-          const count = pollVotes.filter(v => v.reponses?.[q.id] === opt).length;
-          return {
-            name: opt,
-            population: count,
-            color: colors[oIdx % colors.length],
-            legendFontColor: '#aaa',
-            legendFontSize: 11
-          };
-        }).filter((d: any) => d.population > 0);
 
         return (
-          <View key={q.id || idx} style={{ marginBottom: 30 }}>
+          <View key={q.id || idx} style={{ marginBottom: 25 }}>
             <Text style={{ color: '#F8FF00', fontWeight: 'bold', marginBottom: 10 }}>{idx + 1}. {q.label}</Text>
 
-            {chartData.length > 0 ? (
-              <View style={{ alignItems: 'center' }}>
-                <PieChart
-                  data={chartData}
-                  width={width - 64}
-                  height={160}
-                  chartConfig={{ color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})` }}
-                  accessor={"population"}
-                  backgroundColor={"transparent"}
-                  paddingLeft={"0"}
-                  center={[10, 0]}
-                  absolute
-                />
+            <View style={{ gap: 12 }}>
+              {options.map((opt: string) => {
+                const count = pollVotes.filter(v => {
+                  const val = getReponse(v, q.id);
+                  if (!val) return false;
+                  if (Array.isArray(val)) {
+                    return val.some((item: string) => item.trim().toUpperCase() === opt.trim().toUpperCase());
+                  }
+                  return String(val).trim().toUpperCase() === opt.trim().toUpperCase();
+                }).length;
+                const percent = totalVotesCount > 0 ? Math.round((count / totalVotesCount) * 100) : 0;
 
-                {/* Petit rappel textuel des pourcentages sous le graph si besoin */}
-                <View style={{ width: '100%', marginTop: 10 }}>
-                  {options.map((opt: string) => {
-                    const count = pollVotes.filter(v => v.reponses?.[q.id] === opt).length;
-                    const percent = totalVotesCount > 0 ? Math.round((count / totalVotesCount) * 100) : 0;
-                    if (count === 0) return null;
-                    return (
-                      <View key={opt} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <Text style={{ color: '#aaa', fontSize: 12 }}>{opt}</Text>
-                        <Text style={{ color: '#F8FF00', fontSize: 12, fontWeight: 'bold' }}>{percent}% ({count})</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : (
-              <Text style={{ color: '#666', fontStyle: 'italic' }}>Pas encore de données pour cette question.</Text>
-            )}
+                return (
+                  <View key={opt}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{opt}</Text>
+                      <Text style={{ color: '#aaa', fontSize: 14, fontWeight: 'bold' }}>{percent}% ({count})</Text>
+                    </View>
+                    <View style={{ height: 12, backgroundColor: '#444', borderRadius: 6, overflow: 'hidden' }}>
+                      <View style={{
+                        height: '100%',
+                        backgroundColor: '#F8FF00',
+                        width: `${percent}%`,
+                        borderRadius: 6
+                      }} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         );
       })}
@@ -210,26 +196,22 @@ export default function Sondages() {
       supabase.from('agents').select('role_agent').eq('id', session.user.id).single(),
       supabase.from('sondages').select('*').order('created_at', { ascending: false }),
       supabase.from('sondage_votes').select('*').eq('agent_id', session?.user.id),
-      supabase.from('sondage_votes').select('sondage_id, reponses')
+      supabase.from('sondage_votes').select('*')
     ]);
 
     const currentRole = agentRes.data?.role_agent || roleAgent;
     const polls = pollsRes.data;
     const pError = pollsRes.error;
 
-    console.log("DEBUG SONDAGES BRUTS:", polls);
-
     if (pError) {
       console.error('Erreur Supabase Sondages:', pError);
     } else {
-      // Filtrage local pour le cloisonnement
       const filtered = (polls || []).filter(p => {
         const pTarget = (p.target || '').toUpperCase().trim();
         const uRole = (currentRole || '').toUpperCase().trim();
         return pTarget === 'ALL' || pTarget === uRole || !pTarget || (uRole && uRole.includes('SPP OU PATS'));
       });
 
-      // On sépare Actuels et Archivés
       const active = filtered.filter(p => !p.is_archived && (p.is_active !== false));
       const archived = filtered.filter(p => p.is_archived);
 
@@ -237,18 +219,21 @@ export default function Sondages() {
       setArchivedSondages(archived);
     }
 
-    // 2. Traitement de mes votes
     if (!votesRes.error && votesRes.data) {
-      const voteMap: Record<string, any> = {};
-      votesRes.data.forEach(v => {
-        voteMap[v.sondage_id] = v;
+      setMyVotes(prev => {
+        const voteMap: Record<string, any> = { ...prev };
+        votesRes.data.forEach(v => {
+          voteMap[v.sondage_id] = v;
+        });
+        return voteMap;
       });
-      setMyVotes(voteMap);
     }
 
-    // 3. Traitement de tous les votes pour les stats
-    if (!allVRes.error && allVRes.data) {
-      setGlobalVotes(allVRes.data);
+    if (!allVRes.error) {
+      console.log("DEBUG VOTES REÇUS:", allVRes.data);
+      setGlobalVotes(allVRes.data || []);
+    } else {
+      console.error('Erreur récupération sondage_votes (global):', allVRes.error);
     }
 
     setLoading(false);
@@ -257,23 +242,26 @@ export default function Sondages() {
   const handleVote = async (sondageId: string, responses: any) => {
     if (!session?.user) return;
 
-    // Action Flash : On utilise le nom de colonne 'reponses' (français)
-    const { error } = await supabase.from('sondage_votes').insert([
-      {
+    // 1. Envoi simplifié
+    const { error } = await supabase
+      .from('sondage_votes')
+      .insert({
         sondage_id: sondageId,
         agent_id: session.user.id,
-        reponses: responses, // Modification ici : 'reponses' au lieu de 'responses'
-        is_anonymous: !!anonymousFlags[sondageId],
-      },
-    ]);
+        reponses: responses,
+        is_anonymous: !!anonymousFlags[sondageId]
+      });
 
-    if (error) {
-      console.error('Erreur vote:', error);
-      Alert.alert('Erreur', `Impossible d’enregistrer ta participation : ${error.message}`);
+    // 2. Gestion intelligente du résultat
+    const errStatus = (error as any)?.status;
+    if (!error || error.code === '23505' || errStatus === 409 || error?.message?.includes('409') || error?.message?.toLowerCase().includes('conflict')) {
+      console.log("Vote validé ou déjà existant, passage aux résultats.");
+
+      setMyVotes(prev => ({ ...prev, [sondageId]: true }));
+      await loadData(); // On recharge TOUT pour avoir les derniers pourcentages
     } else {
-      Alert.alert('Merci !', 'Ta participation a bien été enregistrée.');
-      // Rafraîchissement immédiat des données pour afficher le graphique
-      await loadData();
+      console.error("Erreur réelle:", error);
+      Alert.alert("Erreur lors du vote", error.message);
     }
   };
 
