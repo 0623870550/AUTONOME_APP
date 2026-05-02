@@ -261,8 +261,8 @@ export default function AlerteScreen() {
 
   return (
     <PageContainer>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 0 }}>
-        <Text style={{ fontSize: 26, fontWeight: 'bold', color: '#FFF' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <Text style={{ color: '#F8FF00', fontSize: 26, fontWeight: '700' }}>
           🚨 Déclarer une alerte
         </Text>
         <Pressable
