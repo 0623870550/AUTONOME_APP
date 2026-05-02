@@ -205,20 +205,19 @@ export default function Sondages() {
   const loadData = async () => {
     setLoading(true);
 
-    // 1. Fetch polls based on role segmentation
-    // 1. Fetch polls and agent role for precise filtering
-    const { data: agentData } = await supabase
-      .from('agents')
-      .select('role_agent')
-      .eq('id', session.user.id)
-      .single();
+    // Lancement des requêtes en parallèle pour ne pas bloquer l'affichage
+    const [agentRes, pollsRes, votesRes, allVRes] = await Promise.all([
+      supabase.from('agents').select('role_agent').eq('id', session.user.id).single(),
+      supabase.from('sondages').select('*').order('created_at', { ascending: false }),
+      supabase.from('sondage_votes').select('*').eq('agent_id', session?.user.id),
+      supabase.from('sondage_votes').select('sondage_id, reponses')
+    ]);
 
-    const currentRole = agentData?.role_agent || roleAgent;
+    const currentRole = agentRes.data?.role_agent || roleAgent;
+    const polls = pollsRes.data;
+    const pError = pollsRes.error;
 
-    const { data: polls, error: pError } = await supabase
-      .from('sondages')
-      .select('*')
-      .order('created_at', { ascending: false });
+    console.log("DEBUG SONDAGES BRUTS:", polls);
 
     if (pError) {
       console.error('Erreur Supabase Sondages:', pError);
@@ -232,34 +231,24 @@ export default function Sondages() {
 
       // On sépare Actuels et Archivés
       const active = filtered.filter(p => !p.is_archived && (p.is_active !== false));
-
       const archived = filtered.filter(p => p.is_archived);
 
       setActiveSondages(active);
       setArchivedSondages(archived);
     }
 
-    // 2. Fetch my votes
-    const { data: votes, error: vError } = await supabase
-      .from('sondage_votes')
-      .select('*')
-      .eq('agent_id', session?.user.id);
-
-    if (!vError && votes) {
+    // 2. Traitement de mes votes
+    if (!votesRes.error && votesRes.data) {
       const voteMap: Record<string, any> = {};
-      votes.forEach(v => {
+      votesRes.data.forEach(v => {
         voteMap[v.sondage_id] = v;
       });
       setMyVotes(voteMap);
     }
 
-    // 3. Fetch all votes for global stats
-    const { data: allV, error: allVError } = await supabase
-      .from('sondage_votes')
-      .select('sondage_id, reponses');
-
-    if (!allVError && allV) {
-      setGlobalVotes(allV);
+    // 3. Traitement de tous les votes pour les stats
+    if (!allVRes.error && allVRes.data) {
+      setGlobalVotes(allVRes.data);
     }
 
     setLoading(false);

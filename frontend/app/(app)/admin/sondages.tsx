@@ -170,7 +170,7 @@ export default function AdminSondages() {
 
     const { error: sError } = await supabase
       .from('sondages')
-      .insert({
+      .insert([{
         question: title,
         questions: questions,
         description: description || null,
@@ -179,7 +179,7 @@ export default function AdminSondages() {
         video_url: finalVideoUrl,
         document_url: finalDocumentUrl,
         is_active: true,
-      });
+      }]);
 
     if (sError) {
       console.error(sError);
