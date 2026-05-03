@@ -253,8 +253,7 @@ export default function Sondages() {
       });
 
     // 2. Gestion intelligente du résultat
-    const errStatus = (error as any)?.status;
-    if (!error || error.code === '23505' || errStatus === 409 || error?.message?.includes('409') || error?.message?.toLowerCase().includes('conflict')) {
+    if (!error || error.code === '23505' || (error as any)?.status === 409) {
       console.log("Vote validé ou déjà existant, passage aux résultats.");
 
       setMyVotes(prev => ({ ...prev, [sondageId]: true }));

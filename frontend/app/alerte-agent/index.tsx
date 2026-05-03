@@ -2,7 +2,27 @@ import PageContainer from '../../components/PageContainer';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { supabase } from '../../lib/supabase';
+
+const getStatusInfo = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'nouvelle':
+    case 'pending':
+      return { label: 'Nouvelle', color: '#888', icon: 'fiber-new', bg: 'rgba(255, 255, 255, 0.05)' };
+    case 'en cours':
+    case 'en_cours':
+      return { label: 'En cours', color: '#FF9500', icon: 'play-circle-outline', bg: 'rgba(255, 149, 0, 0.1)' };
+    case 'analyse':
+      return { label: 'Analyse', color: '#F8FF00', icon: 'search', bg: 'rgba(248, 255, 0, 0.1)' };
+    case 'traitée':
+    case 'cloturee':
+    case 'treated':
+      return { label: 'Traitée', color: '#4CAF50', icon: 'check-circle', bg: 'rgba(76, 175, 80, 0.1)' };
+    default:
+      return { label: status || 'Inconnu', color: '#666', icon: 'help', bg: 'rgba(255, 255, 255, 0.05)' };
+  }
+};
 
 import { useAgentPermission } from '../../context/AgentPermissionContext';
 import { useAgentRole } from '../../context/AgentRoleContext';
@@ -40,14 +60,7 @@ export default function MesAlertesScreen() {
     loadAlertes();
   }, [session, roleAgent, role]);
 
-  const getStatusInfo = (statut: string) => {
-    switch (statut) {
-      case 'en_cours': return { color: '#FF9500', label: 'En cours', icon: '🟠' };
-      case 'analyse': return { color: '#FFD500', label: 'En Analyse', icon: '🟡' };
-      case 'cloturee': return { color: '#34C759', label: 'Clôturée', icon: '🟢' };
-      default: return { color: '#8E8E93', label: 'Nouvelle', icon: '⚪' };
-    }
-  };
+
 
   if (loading || !session?.user || !roleAgent || !role) {
     return (
@@ -63,9 +76,9 @@ export default function MesAlertesScreen() {
   return (
     <PageContainer>
       <ScrollView contentContainerStyle={{ padding: 20 }}>
-        
-        <Pressable 
-          onPress={() => router.push('/')} 
+
+        <Pressable
+          onPress={() => router.push('/')}
           style={styles.backButton}
         >
           <Text style={{ color: '#F8FF00', fontWeight: 'bold' }}>← Retour</Text>
@@ -73,8 +86,8 @@ export default function MesAlertesScreen() {
 
         <Text style={styles.title}>Mes Alertes</Text>
         <Text style={styles.subtitle}>
-          {role === 'delegue' 
-            ? `Suivi des alertes déclarées par les agents (${roleAgent})` 
+          {role === 'delegue'
+            ? `Suivi des alertes déclarées par les agents (${roleAgent})`
             : 'Historique et suivi de vos alertes déclarées.'}
         </Text>
 
@@ -97,8 +110,8 @@ export default function MesAlertesScreen() {
         {alertes.map((a) => {
           const status = getStatusInfo(a.statut);
           // Extraction de la note admin
-          const adminNote = a.comment_interne?.includes('contact_oui | ') 
-            ? a.comment_interne.split('contact_oui | ')[1] 
+          const adminNote = a.comment_interne?.includes('contact_oui | ')
+            ? a.comment_interne.split('contact_oui | ')[1]
             : (a.comment_interne !== 'contact_oui' ? a.comment_interne : null);
 
           return (
@@ -109,14 +122,15 @@ export default function MesAlertesScreen() {
             >
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardType}>{a.type}</Text>
-                
+
                 <Text style={styles.cardMeta}>
                   {a.anonyme ? '👤 Anonyme' : '👥 Identifié'} • {new Date(a.inserted_at).toLocaleDateString('fr-FR')}
                 </Text>
-                
-                <View style={[styles.statusBadge, { borderColor: status.color }]}>
+
+                <View style={[styles.statusBadge, { borderColor: status.color, backgroundColor: status.bg, flexDirection: 'row', alignItems: 'center', gap: 5 }]}>
+                  <MaterialIcons name={status.icon as any} size={14} color={status.color} />
                   <Text style={[styles.statusText, { color: status.color }]}>
-                    {status.icon} {status.label}
+                    {status.label.toUpperCase()}
                   </Text>
                 </View>
 

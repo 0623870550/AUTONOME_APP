@@ -40,6 +40,7 @@ interface Contribution {
   video_url?: string | null;
   created_at: string;
   status: 'pending' | 'validated' | 'rejected';
+  agents?: { pseudo?: string | null; prenom?: string | null } | null;
 }
 
 export default function Explorer() {
@@ -95,24 +96,17 @@ export default function Explorer() {
   const fetchContributions = async () => {
     setLoading(true);
 
-    const dateLimit = new Date();
-    dateLimit.setDate(dateLimit.getDate() - 90);
-    const isoLimit = dateLimit.toISOString();
+    const orderCol = activeTab === 'recentes' ? 'created_at' : 'votes_count';
 
-    let query = supabase.from('contributions')
+    const { data, error } = await supabase
+      .from('explorer_contributions')
       .select('*')
-      .eq('status', 'validated')
-      .gte('created_at', isoLimit);
+      .order(orderCol, { ascending: false });
 
-    if (activeTab === 'recentes') {
-      query = query.order('created_at', { ascending: false });
-    } else {
-      query = query.order('votes_count', { ascending: false });
-    }
-
-    const { data, error } = await query;
     if (!error) {
       setContributions(data || []);
+    } else {
+      console.error('Erreur fetchContributions:', error);
     }
     setLoading(false);
   };
@@ -322,6 +316,18 @@ export default function Explorer() {
                     </View>
                   </View>
 
+                  {c.tags && c.tags.length > 0 && (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                      {c.tags.map((tag, idx) => (
+                        <View key={idx} style={{ backgroundColor: '#222', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#333' }}>
+                          <Text style={{ color: '#aaa', fontSize: 11, fontWeight: '500' }}>
+                            #{tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase()}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
                   <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 6 }}>{c.titre}</Text>
                   <Text style={{ color: '#aaa', fontSize: 14, marginBottom: 15 }} numberOfLines={2}>{c.description}</Text>
 
@@ -387,11 +393,29 @@ export default function Explorer() {
                   </View>
                 )}
                 <Text style={{ color: '#F8FF00', fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>{selected.titre}</Text>
+
+                {selected.tags && selected.tags.length > 0 && (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                    {selected.tags.map((tag, idx) => (
+                      <View key={idx} style={{ backgroundColor: '#222', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#333' }}>
+                        <Text style={{ color: '#F8FF00', fontSize: 12, fontWeight: '500' }}>
+                          #{tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase()}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 <Text style={{ color: '#ccc', fontSize: 16, lineHeight: 22, marginBottom: 20 }}>{selected.description}</Text>
 
                 <View style={{ backgroundColor: '#222', padding: 15, borderRadius: 12, marginBottom: 20 }}>
                   <Text style={{ color: '#888', marginBottom: 5 }}>Publié par :</Text>
-                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>{selected.anonyme ? '👤 Agent Anonyme' : `👤 Un agent (${selected.role_agent})`}</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold' }}>
+                    {(selected as any).anonyme
+                      ? '👤 Agent Anonyme'
+                      : `👤 ${(selected as any).author_pseudo || (selected as any).author_prenom || 'Agent'}`
+                    }
+                  </Text>
                 </View>
 
                 <Pressable onPress={() => setShowModal(false)} style={{ backgroundColor: '#F8FF00', padding: 15, borderRadius: 12, alignItems: 'center' }}>

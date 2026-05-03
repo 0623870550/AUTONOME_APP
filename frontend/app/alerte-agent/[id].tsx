@@ -2,20 +2,28 @@ import PageContainer from 'components/PageContainer';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase, getPublicMediaUrl } from 'lib/supabase';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-  Linking,
-  StyleSheet,
-  Alert,
-  Platform
-} from 'react-native';
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View, Linking, StyleSheet, Alert, Platform } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAgentPermission } from '../../context/AgentPermissionContext';
+
+const getStatusInfo = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'nouvelle':
+    case 'pending':
+      return { label: 'Nouvelle', color: '#888', icon: 'fiber-new', bg: 'rgba(255, 255, 255, 0.05)' };
+    case 'en cours':
+    case 'en_cours':
+      return { label: 'En cours', color: '#FF9500', icon: 'play-circle-outline', bg: 'rgba(255, 149, 0, 0.1)' };
+    case 'analyse':
+      return { label: 'Analyse', color: '#F8FF00', icon: 'search', bg: 'rgba(248, 255, 0, 0.1)' };
+    case 'traitée':
+    case 'cloturee':
+    case 'treated':
+      return { label: 'Traitée', color: '#4CAF50', icon: 'check-circle', bg: 'rgba(76, 175, 80, 0.1)' };
+    default:
+      return { label: status || 'Inconnu', color: '#666', icon: 'help', bg: 'rgba(255, 255, 255, 0.05)' };
+  }
+};
 import { useAgentRole } from '../../context/AgentRoleContext';
 import { useSession } from '../../context/SupabaseSessionProvider';
 
@@ -79,6 +87,8 @@ export default function AlerteAgentDetail() {
 
     loadAlerte();
   }, [id, session, roleAgent, role]);
+
+
 
   const handleDelete = async () => {
     const executeDelete = async () => {
@@ -177,7 +187,18 @@ export default function AlerteAgentDetail() {
         <Text style={styles.mainTitle}>📄 Détail de l'alerte</Text>
 
         <View style={styles.card}>
-          <Text style={styles.typeText}>{alerte.type}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.typeText}>{alerte.type}</Text>
+            {(() => {
+              const status = getStatusInfo(alerte.statut);
+              return (
+                <View style={{ backgroundColor: status.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: status.color, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <MaterialIcons name={status.icon as any} size={14} color={status.color} />
+                  <Text style={{ color: status.color, fontSize: 11, fontWeight: 'bold' }}>{status.label.toUpperCase()}</Text>
+                </View>
+              );
+            })()}
+          </View>
 
           <View style={styles.divider} />
 
