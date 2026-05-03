@@ -13,13 +13,20 @@ serve(async (req) => {
     });
   }
 
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json",
+  };
+
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { user_id, email, role_agent } = await req.json();
+    const body = await req.json();
+    const { user_id, email } = body;
+    const role_agent = body.role_agent || body.type_agent; // Handle both
 
     const { error } = await supabase
       .from("agents")
@@ -33,19 +40,13 @@ serve(async (req) => {
     if (error) {
       return new Response(JSON.stringify({ error }), {
         status: 400,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Content-Type": "application/json",
-        },
+        headers: corsHeaders,
       });
     }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
+      headers: corsHeaders,
     });
 
   } catch (err) {
