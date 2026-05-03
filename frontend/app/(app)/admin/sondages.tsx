@@ -16,6 +16,7 @@ import AuthGate from '../../_auth-gate';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { useAgentPermission } from '../../../context/AgentPermissionContext';
 
 type PollType = 'qcm' | 'yn' | 'text' | 'dropdown';
 type TargetRole = 'SPP' | 'PATS' | 'ALL';
@@ -105,9 +106,19 @@ const RenderStatsAdmin = ({ sondage, globalVotes }: { sondage: any, globalVotes:
     </View>
   );
 };
-
+ 
 export default function AdminSondages() {
   const router = useRouter();
+  const { role } = useAgentPermission();
+ 
+  useEffect(() => {
+    if (role && role !== 'admin') {
+      router.replace('/');
+    }
+  }, [role]);
+ 
+  if (role !== 'admin') return null;
+ 
   const [sondages, setSondages] = useState<any[]>([]);
   const [globalVotes, setGlobalVotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -56,6 +56,7 @@ export default function Page() {
 
 
   useEffect(() => {
+    console.log("Session actuelle:", session);
     if (session === undefined || session === null) return;
 
 
@@ -82,7 +83,12 @@ export default function Page() {
 
         setNews(filteredData);
 
-      } catch (e) { console.error(e); } finally { setLoading(false); }
+      } catch (e: any) { 
+        console.error("Erreur fetchData:", e);
+        if (e?.message?.includes('lock') || e?.message?.includes('navigator.locks')) {
+          console.warn("DÉTECTION D'UN CONFLIT DE LOCK AUTH.");
+        }
+      } finally { setLoading(false); }
     };
     fetchData();
   }, [session, roleAgent]);
@@ -133,7 +139,15 @@ export default function Page() {
           <View style={styles.headerTextContainer}>
             <Text style={styles.welcomeText}>Bonjour,</Text>
             <Text style={styles.nameText}>{agent.prenom} {agent.nom} 👋</Text>
-            <Text style={styles.roleText}>{agent.role === 'admin' ? '🛡️ Administrateur' : '👤 Agent'}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Text style={styles.roleText}>{agent.role === 'admin' ? '🛡️ Administrateur' : '👤 Agent'}</Text>
+              <TouchableOpacity 
+                onPress={() => supabase.auth.signOut()} 
+                style={{ backgroundColor: '#222', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#333' }}
+              >
+                <Text style={{ color: '#FF4444', fontSize: 10, fontWeight: 'bold' }}>🚪 Reset Session</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -155,7 +169,7 @@ export default function Page() {
         </View>
 
         {/* ACTUALITÉS */}
-        <Text style={styles.sectionTitle}>Actualités du Syndicat</Text>
+        <Text style={styles.sectionTitle}>Actualités</Text>
         {news.map((item) => (
           <TouchableOpacity key={item.id} style={styles.newsCard} onPress={() => setSelectedNews(item)}>
             {item.image_url && <Image source={{ uri: item.image_url }} style={styles.newsImage} resizeMode="cover" />}

@@ -33,7 +33,7 @@ export default function ToutesAlertesScreen() {
   const router = useRouter();
   const { session } = useSession();
   const { roleAgent } = useAgentRole();
-  const { role } = useAgentPermission();
+  const { role } = useAgentPermission() as { role: 'admin' | 'agent' | 'delegue' | null };
 
   const [alertes, setAlertes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,10 +41,18 @@ export default function ToutesAlertesScreen() {
 
   const loadAlertes = async () => {
     if (!session?.user || !roleAgent || !role) return;
+
+    // SÉCURITÉ : Seuls les admins accèdent à cette vue globale
+    if (role !== 'admin') {
+      console.error("Tentative d'accès non autorisé à Toutes les Alertes");
+      router.replace('/');
+      return;
+    }
+
     setLoading(true);
     try {
       let query = supabase.from('alerte').select('*').order('inserted_at', { ascending: false });
-      if (role === 'agent') query = query.eq('role_agent', roleAgent);
+      if ((role as string) === 'agent') query = query.eq('role_agent', roleAgent);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -78,6 +86,7 @@ export default function ToutesAlertesScreen() {
   useEffect(() => { loadAlertes(); }, [session, roleAgent, role]);
 
   const updateStatut = async (id: string, nouveauStatut: string) => {
+    if (role !== 'admin') return;
     const { error } = await supabase.from('alerte').update({ statut: nouveauStatut }).eq('id', id);
     if (error) {
       Alert.alert("Erreur", "Impossible de mettre à jour le statut.");
@@ -87,6 +96,7 @@ export default function ToutesAlertesScreen() {
   };
 
   const saveNote = async (id: string, currentComment: string) => {
+    if (role !== 'admin') return;
     const note = notes[id] || '';
     const prefix = currentComment?.includes('contact_oui') ? 'contact_oui | ' : '';
     const finalComment = prefix + note;

@@ -5,6 +5,7 @@ import { View, StyleSheet } from 'react-native';
 import LoaderAutonome from 'components/ui/LoaderAutonome';
 import { supabase } from 'lib/supabase';
 import { useAgentRole } from '../context/AgentRoleContext';
+import { useAgentPermission } from '../context/AgentPermissionContext';
 import { useSession } from '../context/SupabaseSessionProvider';
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const navigationState = useRootNavigationState();
   const { session } = useSession();
   const { setRoleAgent } = useAgentRole();
+  const { role } = useAgentPermission();
 
   const [loadingRoles, setLoadingRoles] = useState(true);
 
@@ -55,12 +57,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
     // Une route est protégée si elle n'est pas dans la liste publique
     const isProtected = !publicRoutes.includes(currentRoute);
-
+    const isAdminRoute = segments.includes('admin');
+ 
     if (!session && isProtected) {
       // Redirection vers login si non connecté sur une route protégée
       router.replace('/login');
     } else if (session && !isProtected) {
-      // Redirection après login réussi (seulement si on est sur une page non protégée comme /login)
+      // Redirection après login réussi
+      router.replace('/');
+    } else if (session && isAdminRoute && (role as string) !== 'admin') {
+      // PROTECTION ADMIN : Rediriger si on tente d'entrer dans /admin sans être admin
+      console.warn("Accès ADMIN refusé pour :", session.user.email);
       router.replace('/');
     }
   }, [session, loadingRoles, segments, navigationState, router]);

@@ -102,7 +102,7 @@ export default function Signup() {
       body: {
         user_id: authData.user.id,
         email,
-        type_agent: typeAgent,
+        role_agent: typeAgent,
       },
     });
 

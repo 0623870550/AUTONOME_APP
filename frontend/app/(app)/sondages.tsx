@@ -10,6 +10,9 @@ import {
   View,
   useWindowDimensions,
   Image,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import PageContainer from '../../components/PageContainer';
 import AuthGate from '../_auth-gate';
@@ -19,6 +22,10 @@ import { useAgentPermission } from '../../context/AgentPermissionContext';
 import { useSession } from '../../context/SupabaseSessionProvider';
 import { router } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+ 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const getReponse = (v: any, qId: string) => {
   if (!v || !v.reponses) return null;
@@ -177,6 +184,7 @@ export default function Sondages() {
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [globalVotes, setGlobalVotes] = useState<any[]>([]);
+  const [expandedSondageId, setExpandedSondageId] = useState<string | null>(null);
 
   // Poll responses states (multi-questions)
   const [pollResponses, setPollResponses] = useState<Record<string, any>>({});
@@ -262,6 +270,33 @@ export default function Sondages() {
       console.error("Erreur réelle:", error);
       Alert.alert("Erreur lors du vote", error.message);
     }
+  };
+ 
+  const toggleExpand = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedSondageId(expandedSondageId === id ? null : id);
+  };
+ 
+  const deleteSondage = async (id: string) => {
+    Alert.alert(
+      "Confirmation",
+      "Voulez-vous vraiment supprimer ce sondage ? Cette action est irréversible et supprimera également tous les votes associés.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase.from('sondages').delete().eq('id', id);
+            if (error) {
+              Alert.alert("Erreur", "Impossible de supprimer le sondage.");
+            } else {
+              loadData();
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderPollContent = (s: any) => {
@@ -397,16 +432,56 @@ export default function Sondages() {
             </Pressable>
           </View>
 
-          {(showArchived ? archivedSondages : activeSondages).map(s => (
+          {!showArchived && activeSondages.map(s => (
             <View key={s.id} style={styles.pollCard}>
               <Text style={styles.pollQuestion}>🗳️ {s.question}</Text>
               {s.description ? <Text style={styles.pollDesc}>{s.description}</Text> : null}
-
               <PollMedia sondage={s} />
-
               {renderPollContent(s)}
             </View>
           ))}
+ 
+          {showArchived && archivedSondages.map(s => {
+            const isExpanded = expandedSondageId === s.id;
+            return (
+              <View key={s.id} style={[styles.pollCard, isExpanded && { borderColor: '#F8FF00' }]}>
+                <Pressable onPress={() => toggleExpand(s.id)} style={styles.archiveHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.pollQuestion, { marginBottom: 4 }]}>🗳️ {s.question}</Text>
+                    <Text style={{ color: '#666', fontSize: 11 }}>Archivé le {new Date(s.archived_at || s.updated_at).toLocaleDateString('fr-FR')}</Text>
+                  </View>
+                  <Text style={{ fontSize: 20, color: isExpanded ? '#F8FF00' : '#444' }}>
+                    {isExpanded ? '▼' : '▶'}
+                  </Text>
+                </Pressable>
+ 
+                {isExpanded && (
+                  <View style={{ marginTop: 20, borderTopWidth: 1, borderTopColor: '#222', paddingTop: 20 }}>
+                    <PollMedia sondage={s} />
+                    {renderPollContent(s)}
+                    
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+                      <Pressable 
+                        onPress={() => toggleExpand(s.id)}
+                        style={[styles.archiveBtn, { backgroundColor: '#333' }]}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Fermer</Text>
+                      </Pressable>
+ 
+                      {role === 'admin' && (
+                        <Pressable 
+                          onPress={() => deleteSondage(s.id)}
+                          style={[styles.archiveBtn, { backgroundColor: 'rgba(255, 68, 68, 0.1)', borderColor: '#FF4444', borderWidth: 1 }]}
+                        >
+                          <Text style={{ color: '#FF4444', fontWeight: 'bold' }}>Supprimer</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })}
           {(showArchived ? archivedSondages : activeSondages).length === 0 && (
             <Text style={styles.emptyText}>Aucun sondage disponible pour le moment.</Text>
           )}
@@ -448,5 +523,7 @@ const styles = StyleSheet.create({
   resultPercent: { position: 'absolute', right: 12, color: '#F8FF00', fontWeight: 'bold' },
   statsDisclaimer: { color: '#666', fontSize: 12, marginTop: 10, textAlign: 'center' },
   emptyText: { color: '#666', textAlign: 'center', marginTop: 40 },
+  archiveHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  archiveBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
 });
 

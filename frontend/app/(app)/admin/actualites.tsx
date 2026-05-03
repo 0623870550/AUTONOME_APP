@@ -17,10 +17,21 @@ import AuthGate from '../../_auth-gate';
 import { useRouter } from 'expo-router';
 import { useSession } from '../../../context/SupabaseSessionProvider';
 import * as DocumentPicker from 'expo-document-picker';
+import { useAgentPermission } from '../../../context/AgentPermissionContext';
 
 export default function AdminActualites() {
   const router = useRouter();
   const { session } = useSession();
+  const { role } = useAgentPermission();
+
+  // SÉCURITÉ : Bloquer l'accès au composant si pas admin
+  useEffect(() => {
+    if (role && role !== 'admin') {
+      router.replace('/');
+    }
+  }, [role]);
+
+  if (role !== 'admin') return null;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
