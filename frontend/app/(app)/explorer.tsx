@@ -105,7 +105,6 @@ export default function Explorer() {
       .order(orderCol, { ascending: false });
 
     if (!error) {
-      console.log("📊 Contributions récupérées:", data?.length || 0);
       setContributions(data || []);
     } else {
       console.error('Erreur fetchContributions:', error);
@@ -223,7 +222,6 @@ export default function Explorer() {
         console.error("❌ Erreur suppression base:", error);
         Alert.alert("Erreur", `Impossible de supprimer la proposition : ${error.message}`);
       } else {
-        console.log("✅ Suppression réussie dans la base");
         setContributions(prev => prev.filter(c => c.id !== id));
       }
     }

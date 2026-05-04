@@ -23,8 +23,6 @@ export default function Home() {
   const [selectedNews, setSelectedNews] = useState<any>(null);
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
-  // CETTE LIGNE DOIT TOUT BLOQUER ET AFFICHER DU ROUGE
-  return <View style={{ flex: 1, backgroundColor: 'red', justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: 'white', fontSize: 30 }}>CA MARCHE ENFIN !</Text></View>;
 
   useEffect(() => {
     fetchNews();
@@ -62,7 +60,7 @@ export default function Home() {
         {/* HEADER / LOGO */}
         <View style={{ alignItems: 'center', marginBottom: 40 }}>
           <Image
-            source={require('./assets/logo_autonome_sdmis.png')}
+            source={require('../assets/logo_autonome_sdmis.png')}
             style={{ width: 100, height: 100, marginBottom: 15 }}
             resizeMode="contain"
           />

@@ -56,7 +56,6 @@ export default function Page() {
 
 
   useEffect(() => {
-    console.log("Session actuelle:", session);
     if (session === undefined || session === null) return;
 
 
@@ -78,8 +77,6 @@ export default function Page() {
           const userRole = String(roleAgent || '').toUpperCase();
           return itemCat === userRole || itemCat === 'ALL';
         }).slice(0, 3);
-
-        console.log("ACTUS FILTRÉES:", filteredData);
 
         setNews(filteredData);
 
@@ -114,7 +111,7 @@ export default function Page() {
         {/* EN-TÊTE */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('../assets/logo_autonome_sdmis.png')} style={styles.logoImage} resizeMode="contain" />
+            <Image source={require('../../assets/logo_autonome_sdmis.png')} style={styles.logoImage} resizeMode="contain" />
             <Animated.View
               style={[
                 StyleSheet.absoluteFill,
@@ -139,15 +136,7 @@ export default function Page() {
           <View style={styles.headerTextContainer}>
             <Text style={styles.welcomeText}>Bonjour,</Text>
             <Text style={styles.nameText}>{agent.prenom} {agent.nom} 👋</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <Text style={styles.roleText}>{agent.role === 'admin' ? '🛡️ Administrateur' : '👤 Agent'}</Text>
-              <TouchableOpacity
-                onPress={() => supabase.auth.signOut()}
-                style={{ backgroundColor: '#222', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#333' }}
-              >
-                <Text style={{ color: '#FF4444', fontSize: 10, fontWeight: 'bold' }}>🚪 Reset Session</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.roleText}>{agent.role === 'admin' ? '🛡️ Administrateur' : '👤 Agent'}</Text>
           </View>
         </View>
 

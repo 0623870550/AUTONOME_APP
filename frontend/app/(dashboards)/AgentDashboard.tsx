@@ -18,7 +18,7 @@ export default function Page({ agent }: { agent: Agent }) {
 
       {/* LOGO AUTONOME */}
       <Image
-        source={require('../assets/logo_autonome_sdmis.png')}
+        source={require('../../assets/logo_autonome_sdmis.png')}
         style={styles.logo}
         resizeMode="contain"
       />
