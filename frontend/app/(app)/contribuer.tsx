@@ -138,26 +138,46 @@ export default function Contribuer() {
   };
 
   const handlePublish = async () => {
+    console.log("🚀 Tentative de publication...");
+    
+    if (!session?.user?.id) {
+      Alert.alert('Session Expirée', 'Veuillez vous reconnecter.');
+      router.replace('/(auth)/login');
+      return;
+    }
+ 
     if (!type || titre.trim().length < 3 || description.trim().length < 5) {
-      Alert.alert('Erreur', 'Veuillez remplir correctement les champs obligatoires.');
+      Alert.alert('Champs requis', 'Titre (3+) et Description (5+) obligatoires.');
       return;
     }
 
     setLoading(true);
+ 
+    try {
 
-    let imageUrl = null;
-    let videoUrl = null;
+      let imageUrl = null;
+      let videoUrl = null;
+ 
+      if (attachments.length > 0) {
+        try {
+          const att = attachments[0];
+          const url = await uploadMedia(att.uri, att.type as any);
+          if (att.type === 'image') imageUrl = url;
+          else if (att.type === 'video') videoUrl = url;
+        } catch (mediaErr) {
+          console.warn("⚠️ Échec upload média, poursuite avec texte seul:", mediaErr);
+        }
+      }
 
-    if (attachments.length > 0) {
-      const att = attachments[0];
-      const url = await uploadMedia(att.uri, att.type as any);
-      if (att.type === 'image') imageUrl = url;
-      else if (att.type === 'video') videoUrl = url;
-    }
 
-    const now = new Date();
-    const parisTime = new Date(now.getTime() + (2 * 60 * 60 * 1000));
 
+
+
+
+    console.log("📤 Insertion contribution...", { 
+      created_by: session?.user.id, 
+      role_agent: roleAgent || 'ALL' 
+    });
     const { error } = await supabase.from('contributions').insert([
       {
         type,
@@ -165,29 +185,33 @@ export default function Contribuer() {
         description: description.trim(),
         impact,
         tags,
-        role_agent: roleAgent,
+        role_agent: roleAgent || 'ALL',
         anonyme,
-        created_by: session?.user.id,
+        valide: false, // Initialement non validé
+        created_by: session.user.id,
         image_url: imageUrl,
         video_url: videoUrl,
         votes_count: 0,
-        created_at: parisTime.toISOString()
+        created_at: new Date().toISOString()
       },
     ]);
 
-    setLoading(false);
 
-    if (error) {
-      Alert.alert('Erreur', error.message);
-    } else {
-      Alert.alert('Succès', 'Votre proposition a été publiée avec succès !');
-      setType(null);
-      setTitre('');
-      setDescription('');
-      setImpact('modere');
-      setTags([]);
-      setAttachments([]);
-      setAnonyme(false);
+
+      if (error) {
+        console.error("❌ ERREUR SUPABASE:", error);
+        Alert.alert("Erreur Base de Données", JSON.stringify(error, null, 2));
+      } else {
+        Alert.alert('Succès', 'Proposition enregistrée !');
+        setType(null); setTitre(''); setDescription(''); setImpact('modere');
+        setTags([]); setAttachments([]); setAnonyme(false);
+        router.push('/explorer');
+      }
+    } catch (globalErr: any) {
+      console.error("💥 Crash handlePublish:", globalErr);
+      Alert.alert("Crash Application", globalErr.message);
+    } finally {
+      setLoading(false);
     }
   };
 

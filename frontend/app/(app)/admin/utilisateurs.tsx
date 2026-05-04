@@ -55,6 +55,7 @@ export default function UserManagement() {
       .order('nom', { ascending: true });
 
     if (!error) {
+      console.log("📊 AGENTS CHARGÉS :", data?.length);
       setUsers(data || []);
       setFilteredUsers(data || []);
     }
@@ -92,7 +93,7 @@ export default function UserManagement() {
         <Pressable onPress={() => router.back()} style={styles.backButton}>
           <Text style={{ color: '#F8FF00', fontSize: 16 }}>← Retour</Text>
         </Pressable>
-        <Text style={styles.title}>Gestion des Utilisateurs</Text>
+        <Text style={styles.title}>Gestion des Utilisateurs ({users.length})</Text>
       </View>
       <TextInput
         style={styles.searchInput}

@@ -34,8 +34,9 @@ interface Contribution {
   tags: string[];
   role_agent?: string | null;
   anonyme: boolean;
-  score: number;
-  votes_count: number;
+  up_votes: number;
+  down_votes: number;
+  neutral_votes: number;
   image_url?: string | null;
   video_url?: string | null;
   created_at: string;
@@ -96,7 +97,7 @@ export default function Explorer() {
   const fetchContributions = async () => {
     setLoading(true);
 
-    const orderCol = activeTab === 'recentes' ? 'created_at' : 'votes_count';
+    const orderCol = activeTab === 'recentes' ? 'created_at' : 'score_tendance';
 
     const { data, error } = await supabase
       .from('explorer_contributions')
@@ -104,6 +105,7 @@ export default function Explorer() {
       .order(orderCol, { ascending: false });
 
     if (!error) {
+      console.log("📊 Contributions récupérées:", data?.length || 0);
       setContributions(data || []);
     } else {
       console.error('Erreur fetchContributions:', error);
@@ -114,12 +116,17 @@ export default function Explorer() {
   const handleVote = async (contributionId: string, voteType: 'up' | 'down' | 'neutral') => {
     if (!session) return;
 
-    const voteValueMap = { 'up': 1, 'down': -1, 'neutral': 0 };
-    const numericValue = voteValueMap[voteType];
+    // SÉCURITÉ : Cloisonnement par service (un SPP ne vote que pour SPP/ALL)
+    const contribution = contributions.find(c => c.id === contributionId);
+    if (contribution?.role_agent && contribution.role_agent !== 'ALL' && contribution.role_agent !== roleAgent) {
+      Alert.alert("Accès limité", `En tant que ${roleAgent}, vous ne pouvez voter que pour les propositions de votre service.`);
+      return;
+    }
 
-
+    const numericValue = voteType === 'up' ? 1 : voteType === 'down' ? -1 : 0;
     const previousVote = userVotes[contributionId];
 
+    // --- MISE À JOUR OPTIMISTE ---
     setUserVotes(prev => {
       const next = { ...prev };
       if (previousVote === voteType) delete next[contributionId];
@@ -129,45 +136,57 @@ export default function Explorer() {
 
     setContributions(prev => prev.map(c => {
       if (c.id === contributionId) {
-        let newCount = c.votes_count || 0;
-        if (previousVote === 'up') newCount--;
-        if (voteType === 'up' && previousVote !== 'up') newCount++;
-        return { ...c, votes_count: newCount };
+        const next = { ...c };
+        if (previousVote === 'up') next.up_votes = Math.max(0, (next.up_votes || 0) - 1);
+        if (previousVote === 'down') next.down_votes = Math.max(0, (next.down_votes || 0) - 1);
+        if (previousVote === 'neutral') next.neutral_votes = Math.max(0, (next.neutral_votes || 0) - 1);
+
+        if (previousVote !== voteType) {
+          if (voteType === 'up') next.up_votes = (next.up_votes || 0) + 1;
+          if (voteType === 'down') next.down_votes = (next.down_votes || 0) + 1;
+          if (voteType === 'neutral') next.neutral_votes = (next.neutral_votes || 0) + 1;
+        }
+        return next;
       }
       return c;
     }));
 
+
+
+
+
+
+
+
     try {
-      if (previousVote === voteType) {
-        await supabase
+      if (previousVote) {
+        const { error: delError } = await supabase
           .from('contribution_votes')
           .delete()
           .match({ contribution_id: contributionId, user_id: session.user.id });
-      } else {
-        await supabase
-          .from('contribution_votes')
-          .upsert({
-            contribution_id: contributionId,
-            user_id: session.user.id,
-            vote_type: numericValue
-          }, { onConflict: 'contribution_id,user_id' });
-      }
+        if (delError) throw delError;
 
-      let diff = 0;
-      if (previousVote === 'up') diff--;
-      if (voteType === 'up' && previousVote !== 'up') diff++;
-
-      if (diff !== 0) {
-        const { data: current } = await supabase.from('contributions').select('votes_count').eq('id', contributionId).single();
-        await supabase
-          .from('contributions')
-          .update({ votes_count: (current?.votes_count || 0) + diff })
-          .eq('id', contributionId);
+        if (previousVote === voteType) return;
       }
+      const { error: insError } = await supabase
+        .from('contribution_votes')
+        .insert({
+          contribution_id: contributionId,
+          user_id: session.user.id,
+          vote_type: numericValue
+        });
+      if (insError) throw insError;
+
+
+
+
+
+
     } catch (e: any) {
-      console.error("Vote Error:", e.message || e);
-      fetchContributions();
+      console.error("Vote RLS/Constraint Error:", e.message);
+      Alert.alert("Erreur", "Action non autorisée ou erreur de permission (RLS).");
       fetchUserVotes();
+      fetchContributions();
     }
   };
 
@@ -201,8 +220,10 @@ export default function Explorer() {
 
       const { error } = await supabase.from('contributions').delete().eq('id', id);
       if (error) {
-        Alert.alert("Erreur", "Impossible de supprimer la proposition.");
+        console.error("❌ Erreur suppression base:", error);
+        Alert.alert("Erreur", `Impossible de supprimer la proposition : ${error.message}`);
       } else {
+        console.log("✅ Suppression réussie dans la base");
         setContributions(prev => prev.filter(c => c.id !== id));
       }
     }
@@ -338,21 +359,23 @@ export default function Explorer() {
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: userVotes[c.id] === 'up' ? 'rgba(248, 255, 0, 0.1)' : '#222', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'up' ? '#F8FF00' : '#444' }}
                       >
                         <MaterialIcons name="thumb-up" size={18} color={userVotes[c.id] === 'up' ? '#F8FF00' : '#888'} />
-                        <Text style={{ color: userVotes[c.id] === 'up' ? '#F8FF00' : '#fff', fontWeight: 'bold' }}>{c.votes_count || 0}</Text>
+                        <Text style={{ color: userVotes[c.id] === 'up' ? '#F8FF00' : '#fff', fontWeight: 'bold' }}>{c.up_votes || 0}</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleVote(c.id, 'down')}
-                        style={{ padding: 8, backgroundColor: userVotes[c.id] === 'down' ? 'rgba(248, 255, 0, 0.1)' : '#222', borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'down' ? '#F8FF00' : '#444' }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: userVotes[c.id] === 'down' ? 'rgba(248, 255, 0, 0.1)' : '#222', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'down' ? '#F8FF00' : '#444' }}
                       >
                         <MaterialIcons name="thumb-down" size={18} color={userVotes[c.id] === 'down' ? '#F8FF00' : '#888'} />
+                        <Text style={{ color: userVotes[c.id] === 'down' ? '#F8FF00' : '#fff', fontWeight: 'bold' }}>{c.down_votes || 0}</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleVote(c.id, 'neutral')}
-                        style={{ padding: 8, backgroundColor: userVotes[c.id] === 'neutral' ? 'rgba(248, 255, 0, 0.1)' : '#222', borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'neutral' ? '#F8FF00' : '#444' }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: userVotes[c.id] === 'neutral' ? 'rgba(248, 255, 0, 0.1)' : '#222', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: userVotes[c.id] === 'neutral' ? '#F8FF00' : '#444' }}
                       >
                         <MaterialIcons name="sentiment-neutral" size={18} color={userVotes[c.id] === 'neutral' ? '#F8FF00' : '#888'} />
+                        <Text style={{ color: userVotes[c.id] === 'neutral' ? '#F8FF00' : '#fff', fontWeight: 'bold' }}>{c.neutral_votes || 0}</Text>
                       </Pressable>
                     </View>
 

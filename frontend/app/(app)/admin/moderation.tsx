@@ -80,7 +80,10 @@ export default function ModerationPropositions() {
   const handleValidate = async (id: string) => {
     const { error } = await supabase
       .from('contributions')
-      .update({ status: 'validated' })
+      .update({ 
+        status: 'validated',
+        valide: true 
+      })
       .eq('id', id);
 
     if (error) {
