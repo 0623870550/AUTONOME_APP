@@ -90,9 +90,43 @@ export default function Compte() {
     return null;
   };
 
+  const uploadAvatar = async (uri: string) => {
+    try {
+      const fileName = `${user.id}-${Date.now()}.jpg`;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      const { data, error } = await supabase.storage
+        .from('avatars') // On suppose que le bucket s'appelle 'avatars'
+        .upload(fileName, blob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (err) {
+      console.error('Avatar upload error:', err);
+      return null;
+    }
+  };
+
   const handleUpdate = async () => {
     if (!user) return;
     setSaving(true);
+
+    let finalImageUrl = profileImage;
+
+    // Si l'image est locale (file://), on l'uploade d'abord
+    if (profileImage && profileImage.startsWith('file://')) {
+      const uploadedUrl = await uploadAvatar(profileImage);
+      if (uploadedUrl) finalImageUrl = uploadedUrl;
+    }
 
     const updates = {
       matricule: matricule || null,
@@ -101,7 +135,7 @@ export default function Compte() {
       date_entree: RN.Platform.OS === 'web' ? (dateEntreeWeb || null) : safeIsoDate(dateEntree),
       date_nomination: RN.Platform.OS === 'web' ? (dateNominationWeb || null) : safeIsoDate(dateNomination),
       telephone: phone || null,
-      photo_url: profileImage || null,
+      photo_url: finalImageUrl || null,
       updated_at: new Date().toISOString(),
     };
 

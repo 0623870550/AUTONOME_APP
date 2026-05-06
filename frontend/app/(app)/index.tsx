@@ -75,7 +75,8 @@ export default function Page() {
         const filteredData = (data || []).filter(item => {
           const itemCat = String(item.category || '').toUpperCase();
           const userRole = String(roleAgent || '').toUpperCase();
-          return itemCat === userRole || itemCat === 'ALL';
+          // Support pour le cloisonnement strict et les anciens rôles mixtes (ex: "SPP OU PATS")
+          return itemCat === 'ALL' || userRole.includes(itemCat) || itemCat.includes(userRole);
         }).slice(0, 3);
 
         setNews(filteredData);
@@ -158,7 +159,7 @@ export default function Page() {
         </View>
 
         {/* ACTUALITÉS */}
-        <Text style={styles.sectionTitle}>Actualités</Text>
+        <Text style={styles.sectionTitle}>Actualités catégorie C</Text>
         {news.map((item) => (
           <TouchableOpacity key={item.id} style={styles.newsCard} onPress={() => setSelectedNews(item)}>
             {item.image_url && <Image source={{ uri: item.image_url }} style={styles.newsImage} resizeMode="cover" />}

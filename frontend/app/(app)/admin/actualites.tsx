@@ -89,14 +89,9 @@ export default function AdminActualites() {
     if (selectedFile) {
       try {
         const fileName = `${Date.now()}.jpg`;
-        const xhr = new XMLHttpRequest();
-        const blob: Blob = await new Promise((resolve, reject) => {
-          xhr.onload = () => resolve(xhr.response);
-          xhr.onerror = () => reject(new TypeError("Erreur de lecture du fichier."));
-          xhr.responseType = 'blob';
-          xhr.open('GET', selectedFile.uri, true);
-          xhr.send(null);
-        });
+        // LOGIQUE FETCH BLOB ROBUSTE POUR MOBILE (Fix Network request failed)
+        const response = await fetch(selectedFile.uri);
+        const blob = await response.blob();
         const { error: uploadError } = await supabase.storage
           .from('actualites-media')
           .upload(fileName, blob, { contentType: selectedFile.mimeType || 'image/jpeg', upsert: true });

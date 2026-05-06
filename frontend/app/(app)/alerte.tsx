@@ -9,13 +9,17 @@ import {
   TextInput,
   View,
   ActivityIndicator,
-  Alert
+  Alert,
+  Platform, // Ajouté pour la détection Web/Mobile
+  Keyboard
 } from 'react-native';
 
 import PageContainer from '../../components/PageContainer';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as WebBrowser from 'expo-web-browser';
+// FIX SDK 54 : Utilisation du chemin legacy
+import * as FileSystem from 'expo-file-system/legacy';
 
 import Animated, {
   useAnimatedStyle,
@@ -47,7 +51,7 @@ interface Attachment {
 }
 
 /* ---------------------------------------------
-   HELPERS
+   HELPERS & POLYFILL
 ---------------------------------------------- */
 const generateId = () => Math.random().toString(36).substring(2, 12);
 
@@ -63,19 +67,39 @@ const iconForType = (type: AttachmentType) => {
   return '📄';
 };
 
+// --- POLYFILL POUR MOBILE (Fix définitif Network Request Failed) ---
+const decodeBase64 = (base64: string) => {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+
 /* ---------------------------------------------
-   UPLOAD LOGIC (FIXED)
+   UPLOAD LOGIC (ROBUSTE)
 ---------------------------------------------- */
 const uploadFile = async (att: Attachment): Promise<string | null> => {
   try {
-    const response = await fetch(att.uri);
-    const blob = await response.blob();
     const fileExt = att.name.split('.').pop();
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
+    let body;
+
+    if (Platform.OS === 'web') {
+      // Sur Web, fetch + blob fonctionne
+      const response = await fetch(att.uri);
+      body = await response.blob();
+    } else {
+      // Sur Mobile, on utilise ArrayBuffer via Base64
+      const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
+      body = decodeBase64(base64);
+    }
+
     const { data, error } = await supabase.storage
       .from('alerte_files')
-      .upload(fileName, blob, {
+      .upload(fileName, body, {
         contentType: att.mimeType || 'application/octet-stream',
         upsert: false,
       });
@@ -88,13 +112,13 @@ const uploadFile = async (att: Attachment): Promise<string | null> => {
 
     return publicUrlData.publicUrl;
   } catch (e) {
-    console.error('Erreur upload storage:', e);
+    console.error('❌ Erreur upload storage alerte:', e);
     return null;
   }
 };
 
 /* ---------------------------------------------
-   DRAFT STATE (PERSISTANCE LOCALE)
+   DRAFT STATE
 ---------------------------------------------- */
 let draftAlerte = {
   type: '',
@@ -161,7 +185,7 @@ export default function AlerteScreen() {
       const newAtt: Attachment = {
         id: generateId(),
         uri: asset.uri,
-        name: asset.fileName || `image_${Date.now()}.jpg`,
+        name: asset.fileName || `media_${Date.now()}.jpg`,
         type: detectType(asset.uri),
         mimeType: asset.mimeType
       };
@@ -191,7 +215,10 @@ export default function AlerteScreen() {
   const createAlerte = async () => {
     if (!user) { Alert.alert('Erreur', 'Utilisateur non connecté'); return; }
     if (!type || !lieu || !description || !gravite) { Alert.alert('Champs requis', 'Merci de remplir tous les champs'); return; }
-    if (!roleAgent) { Alert.alert('Erreur', "Impossible de déterminer votre rôle (SPP/PATS)"); return; }
+
+    // Nettoyage sécurité du rôle
+    let cleanRole = roleAgent || 'SPP';
+    if (cleanRole.includes('ou')) cleanRole = 'SPP';
 
     setIsSubmitting(true);
 
@@ -216,7 +243,7 @@ export default function AlerteScreen() {
         statut: 'pending',
         anonyme,
         created_by: user.id,
-        role_agent: roleAgent,
+        role_agent: cleanRole,
         attachments: updatedAttachments,
         comment_interne: commentInterne,
         inserted_at: parisTime.toISOString(),
@@ -240,7 +267,7 @@ export default function AlerteScreen() {
 
     } catch (error: any) {
       console.error('Erreur createAlerte:', error);
-      Alert.alert('Erreur', "Une erreur est survenue lors de l'envoi de l'alerte.");
+      Alert.alert('Erreur', "Une erreur est survenue lors de l'envoi.");
     } finally {
       setIsSubmitting(false);
     }
@@ -255,10 +282,6 @@ export default function AlerteScreen() {
     .onBegin(() => { scale.value = withSpring(0.95); })
     .onFinalize(() => { scale.value = withSpring(1); });
 
-  const handleClose = () => {
-    router.back();
-  };
-
   return (
     <PageContainer>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -266,7 +289,7 @@ export default function AlerteScreen() {
           🚨 Déclarer une alerte
         </Text>
         <Pressable
-          onPress={handleClose}
+          onPress={() => router.back()}
           style={{ backgroundColor: '#222', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#333' }}
         >
           <Text style={{ color: '#aaa', fontSize: 12, fontWeight: 'bold' }}>✕ Quitter</Text>

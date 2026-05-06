@@ -7,6 +7,7 @@ import {
   Text,
   Animated,
   Vibration,
+  Keyboard
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { USE_NATIVE_DRIVER } from '../lib/platform';
@@ -22,7 +23,6 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Animation shake
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const triggerShake = () => {
@@ -30,7 +30,6 @@ export default function ForgotPassword() {
       Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
@@ -39,7 +38,10 @@ export default function ForgotPassword() {
     /^[a-zA-Z0-9._%+-]+@sdmis\.fr$/.test(value.trim());
 
   const handleReset = async () => {
-    if (!isValidSdmisEmail(email)) {
+    if (Platform.OS !== 'web') Keyboard.dismiss();
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!isValidSdmisEmail(cleanEmail)) {
       triggerShake();
       Vibration.vibrate(40);
       Alert.alert('Adresse invalide', 'Veuillez entrer votre adresse @sdmis.fr.');
@@ -48,23 +50,38 @@ export default function ForgotPassword() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'autonome://auth/callback',
-    });
+    try {
+      /**
+       * CORRECTION CRUCIALE : 
+       * On utilise 'autonome://auth/callback' car c'est ce qui est déclaré 
+       * dans ton intentFilter Android (app.json) et ta liste Supabase.
+       */
+      const redirectUrl = Platform.OS === 'web'
+        ? `${window.location.origin}/reset-password`
+        : 'autonome://auth/callback';
 
-    setLoading(false);
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: redirectUrl,
+      });
 
-    if (error) {
-      Alert.alert('Erreur', error.message);
-      return;
+      if (error) throw error;
+
+      Alert.alert(
+        'Email envoyé ✅',
+        `Un lien a été envoyé à ${cleanEmail}.\n\nOuvrez ce mail sur votre téléphone et cliquez sur le lien pour revenir dans l'application.`,
+        [{ text: 'OK', onPress: () => router.replace('/login') }]
+      );
+
+    } catch (error: any) {
+      console.error("Erreur reset:", error.message);
+      if (error.message.includes('rate limit')) {
+        Alert.alert('Trop de tentatives', "Veuillez patienter une heure avant de réessayer.");
+      } else {
+        Alert.alert('Erreur', "Une erreur est survenue lors de l'envoi.");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    Alert.alert(
-      'Email envoyé ✅',
-      'Un lien de réinitialisation vous a été envoyé. Cliquez dessus depuis votre téléphone pour définir un nouveau mot de passe.',
-      [{ text: 'OK', onPress: () => router.replace('/login') }]
-    );
-
   };
 
   if (loading) return <LoaderAutonome />;
@@ -80,6 +97,8 @@ export default function ForgotPassword() {
           placeholder="prenom.nom@sdmis.fr"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
           style={[
             email.length > 0 && emailValid && styles.validInput,
             email.length > 0 && !emailValid && styles.invalidInput,
@@ -94,7 +113,7 @@ export default function ForgotPassword() {
       />
 
       <Text
-        style={{ color: '#F8FF00', textAlign: 'center', marginTop: 20 }}
+        style={styles.link}
         onPress={() => router.push('/login')}
       >
         Retour à la connexion
@@ -110,16 +129,12 @@ const styles = StyleSheet.create({
     padding: 20,
     justifyContent: 'center',
   },
-
-  validInput: {
-    borderColor: '#F8FF00',
-    ...Platform.select({
-      web: { boxShadow: '0px 0px 6px rgba(248, 255, 0, 0.4)' },
-      default: { shadowColor: '#F8FF00', shadowOpacity: 0.4, shadowRadius: 6 },
-    }),
-  },
-
-  invalidInput: {
-    borderColor: '#FF4444',
-  },
+  validInput: { borderColor: '#F8FF00' },
+  invalidInput: { borderColor: '#FF4444' },
+  link: {
+    color: '#F8FF00',
+    textAlign: 'center',
+    marginTop: 20,
+    fontWeight: '600',
+  }
 });

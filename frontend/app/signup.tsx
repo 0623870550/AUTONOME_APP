@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import {
   View,
   Alert,
@@ -10,7 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from 'lib/supabase';
 import { USE_NATIVE_DRIVER } from '../lib/platform';
 import { useRouter } from 'expo-router';
@@ -20,19 +22,21 @@ import InputAutonome from 'components/ui/InputAutonome';
 import ButtonAutonome from 'components/ui/ButtonAutonome';
 import HeaderAuth from 'components/ui/HeaderAuth';
 
+const MemoInput = memo(InputAutonome);
+
 export default function Signup() {
   const router = useRouter();
 
-  const [pseudo, setPseudo] = useState('');
-  const [prenom, setPrenom] = useState('');
-  const [nom, setNom] = useState('');
+  // 1. REFS (Focus stable sur mobile)
+  const prenomRef = useRef('');
+  const nomRef = useRef('');
+  const emailRef = useRef('');
+  const passwordRef = useRef('');
+  const passwordConfirmRef = useRef('');
+
+  // 2. STATES (UI uniquement)
   const [typeAgent, setTypeAgent] = useState<'SPP' | 'PATS' | ''>('');
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
 
   // Animation shake
@@ -43,7 +47,6 @@ export default function Signup() {
       Animated.timing(shakeAnim, { toValue: 10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: 6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
-      Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
       Animated.timing(shakeAnim, { toValue: 0, duration: 60, useNativeDriver: USE_NATIVE_DRIVER }),
     ]).start();
   };
@@ -51,223 +54,188 @@ export default function Signup() {
   const isValidSdmisEmail = (value: string) =>
     /^[a-zA-Z0-9._%+-]+@sdmis\.fr$/.test(value.trim());
 
-  const passwordStrength = (() => {
-    if (password.length < 6) return 'weak';
-    if (password.length < 10) return 'medium';
-    return 'strong';
-  })();
-
-  const allValid =
-    pseudo.trim() &&
-    prenom.trim() &&
-    nom.trim() &&
-    typeAgent &&
-    isValidSdmisEmail(email) &&
-    password.length >= 6 &&
-    password === passwordConfirm;
-
   const handleSignup = async () => {
-    if (!allValid) {
+    if (Platform.OS !== 'web') Keyboard.dismiss();
+    console.log("🚀 Lancement du processus d'inscription...");
+
+    const prenom = prenomRef.current.trim();
+    const nom = nomRef.current.trim();
+    const email = emailRef.current.trim();
+    const password = passwordRef.current;
+    const passwordConfirm = passwordConfirmRef.current;
+
+    // VALIDATION
+    if (!prenom || !nom || !typeAgent || !isValidSdmisEmail(email) || password.length < 6 || password !== passwordConfirm) {
       triggerShake();
       Vibration.vibrate(50);
-      Alert.alert('Champs incomplets', 'Veuillez remplir correctement tous les champs.');
+      let msg = 'Veuillez remplir correctement tous les champs.';
+      if (password && password.length < 6) msg = 'Le mot de passe est trop court (6 min).';
+      if (password !== passwordConfirm) msg = 'Les mots de passe ne correspondent pas.';
+      if (email && !isValidSdmisEmail(email)) msg = 'Utilisez votre mail @sdmis.fr uniquement.';
+      if (!typeAgent) msg = 'Veuillez sélectionner SPP ou PATS.';
+
+      Alert.alert('Champs incomplets', msg);
       return;
     }
 
     setLoading(true);
 
-
-    // 1️⃣ Création du compte Supabase Auth AVEC les métadonnées (Correction Supabase)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          pseudo,
-          prenom,
-          nom,
-          type_agent: typeAgent,
+    try {
+      // 1️⃣ Inscription Supabase avec Metadata propres
+      // On envoie les deux clés (type_agent et role_agent) pour être sûr que le Trigger SQL fonctionne
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            prenom: prenom,
+            nom: nom,
+            type_agent: typeAgent, // 'SPP' ou 'PATS'
+            role_agent: typeAgent, // Doublon de sécurité pour la table public.agents
+            role: 'agent',
+          }
         }
+      });
+
+      if (authError) {
+        // Si l'utilisateur existe déjà en Auth mais pas en table agents, c'est ici que ça coince
+        console.error("Erreur Auth SignUp:", authError.message);
+        throw new Error(authError.message);
       }
-    });
 
-    if (authError || !authData.user) {
+      console.log("✅ Inscription Auth réussie pour:", authData.user?.email);
+
+      // 2️⃣ Message de succès et redirection
+      Alert.alert(
+        'Inscription réussie !',
+        'Votre compte a été créé. Vous pouvez maintenant vous connecter.',
+        [{
+          text: 'OK',
+          onPress: () => {
+            setTimeout(() => {
+              router.replace('/login');
+            }, 500);
+          }
+        }]
+      );
+
+    } catch (err: any) {
+      console.error('Signup Global Error:', err.message);
+      // On affiche le message d'erreur réel de Supabase (ex: "Database error saving new user")
+      Alert.alert('Erreur lors de la création', err.message);
+    } finally {
       setLoading(false);
-      Alert.alert('Erreur', authError?.message);
-      return;
     }
-
-    // 2️⃣ Appel à la Edge Function pour créer l'agent côté serveur
-    await supabase.functions.invoke("smart-service", {
-      body: {
-        user_id: authData.user.id,
-        email,
-        role_agent: typeAgent,
-      },
-    });
-
-    // 3️⃣ Fin du processus
-    setLoading(false);
-
-    Alert.alert(
-      'Email envoyé',
-      'Un lien de confirmation vous a été envoyé. Consultez votre boîte mail SDMIS.'
-    );
-
-    router.replace('/splash');
   };
 
   if (loading) return <LoaderAutonome />;
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      /* Correction clavier : 'padding' pour iOS, mais par défaut/undefined pour Android qui gère ça souvent mieux seul */
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        /* contentContainerStyle flexGrow permet à la ScrollView de remplir l'écran, paddingBottom donne de la marge au clavier */
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 50 }}
-        /* handled empêche le clavier de fermer et l'écran de sauter quand on tape */
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.container}>
-          <HeaderAuth title="Créer un compte" />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            {Platform.OS !== 'web' && (
+              <Pressable onPress={Keyboard.dismiss} style={StyleSheet.absoluteFill} />
+            )}
 
-          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
-            <InputAutonome
-              placeholder="Identifiant / Pseudo"
-              value={pseudo}
-              onChangeText={setPseudo}
-              multiline={false}
-              autoCapitalize="none"
-              style={[pseudo && styles.validInput]}
-            />
+            <HeaderAuth title="Inscription" />
 
-            <InputAutonome
-              placeholder="Prénom"
-              value={prenom}
-              onChangeText={setPrenom}
-              multiline={false}
-              style={[prenom && styles.validInput]}
-            />
+            <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+              <MemoInput
+                placeholder="Prénom"
+                defaultValue={prenomRef.current}
+                onChangeText={(t) => { prenomRef.current = t; }}
+                blurOnSubmit={false}
+              />
 
-            <InputAutonome
-              placeholder="Nom"
-              value={nom}
-              onChangeText={setNom}
-              multiline={false}
-              style={[nom && styles.validInput]}
-            />
+              <MemoInput
+                placeholder="Nom"
+                defaultValue={nomRef.current}
+                onChangeText={(t) => { nomRef.current = t; }}
+                blurOnSubmit={false}
+              />
 
-            {/* Sélecteur SPP / PATS */}
-            <View style={styles.selectorRow}>
-              <Pressable
-                style={[styles.selector, typeAgent === 'SPP' && styles.selectorActive]}
-                onPress={() => setTypeAgent('SPP')}
-              >
-                <Text style={styles.selectorText}>SPP</Text>
-              </Pressable>
+              <Text style={styles.label}>Type d'agent</Text>
+              <View style={styles.selectorRow}>
+                <Pressable
+                  style={[styles.selector, typeAgent === 'SPP' && styles.selectorActive]}
+                  onPress={() => setTypeAgent('SPP')}
+                >
+                  <Text style={[styles.selectorText, typeAgent === 'SPP' && styles.selectorTextActive]}>SPP</Text>
+                </Pressable>
 
-              <Pressable
-                style={[styles.selector, typeAgent === 'PATS' && styles.selectorActive]}
-                onPress={() => setTypeAgent('PATS')}
-              >
-                <Text style={styles.selectorText}>PATS</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  style={[styles.selector, typeAgent === 'PATS' && styles.selectorActive]}
+                  onPress={() => setTypeAgent('PATS')}
+                >
+                  <Text style={[styles.selectorText, typeAgent === 'PATS' && styles.selectorTextActive]}>PATS</Text>
+                </Pressable>
+              </View>
 
-            <InputAutonome
-              placeholder="prenom.nom@sdmis.fr"
-              value={email}
-              onChangeText={setEmail}
-              multiline={false}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={[
-                email && isValidSdmisEmail(email) && styles.validInput,
-                email && !isValidSdmisEmail(email) && styles.invalidInput,
-              ]}
-            />
+              <MemoInput
+                placeholder="prenom.nom@sdmis.fr"
+                defaultValue={emailRef.current}
+                onChangeText={(t) => { emailRef.current = t; }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                blurOnSubmit={false}
+              />
 
-            <InputAutonome
-              placeholder="Mot de passe"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-              multiline={false}
-              autoCapitalize="none"
-              style={[
-                password && passwordStrength !== 'weak' && styles.validInput,
-                password && passwordStrength === 'weak' && styles.invalidInput,
-              ]}
-            />
+              <MemoInput
+                placeholder="Mot de passe (6 car. min)"
+                defaultValue={passwordRef.current}
+                onChangeText={(t) => { passwordRef.current = t; }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                blurOnSubmit={false}
+              />
 
-            <InputAutonome
-              placeholder="Confirmer le mot de passe"
-              value={passwordConfirm}
-              onChangeText={setPasswordConfirm}
-              secureTextEntry={!showPassword}
-              multiline={false}
-              autoCapitalize="none"
-              style={[
-                passwordConfirm &&
-                passwordConfirm === password &&
-                styles.validInput,
-                passwordConfirm &&
-                passwordConfirm !== password &&
-                styles.invalidInput,
-              ]}
-            />
-          </Animated.View>
+              <MemoInput
+                placeholder="Confirmer mot de passe"
+                defaultValue={passwordConfirmRef.current}
+                onChangeText={(t) => { passwordConfirmRef.current = t; }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                blurOnSubmit={false}
+              />
+            </Animated.View>
 
-          {/* Afficher / masquer */}
-          <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
-            <Text style={{ color: '#F8FF00', fontSize: 16 }}>
-              {showPassword ? '👁️‍🗨️ Masquer' : '👁️ Afficher'}
-            </Text>
-          </Pressable>
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+              <Text style={styles.eyeText}>{showPassword ? '👁️ Masquer' : '👁️ Afficher'}</Text>
+            </Pressable>
 
-          {/* Jauge de force */}
-          {password.length > 0 && (
-            <Text
-              style={[
-                styles.strength,
-                passwordStrength === 'weak' && { color: '#FF4444' },
-                passwordStrength === 'medium' && { color: '#F8FF00' },
-                passwordStrength === 'strong' && { color: '#00FF88' },
-              ]}
-            >
-              Force du mot de passe : {passwordStrength}
-            </Text>
-          )}
+            <ButtonAutonome title="Créer mon compte" onPress={handleSignup} />
 
-          <ButtonAutonome title="Créer mon compte" onPress={handleSignup} disabled={!allValid} />
-
-          <Pressable onPress={() => router.push('/login')} style={{ marginTop: 20 }}>
-            <Text style={{ color: '#F8FF00', textAlign: 'center' }}>
-              Déjà un compte ? Se connecter
-            </Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Pressable onPress={() => router.push('/login')} style={styles.loginLink}>
+              <Text style={styles.loginLinkText}>Déjà inscrit ? Connexion</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#000' },
+  flex: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 40 },
   container: {
     flex: 1,
-    backgroundColor: '#000',
     padding: 20,
-    justifyContent: 'center',
+    paddingTop: 30,
+    justifyContent: 'flex-start',
   },
-  selectorRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
+  label: { color: '#666', fontSize: 14, marginBottom: 10, marginLeft: 5 },
+  selectorRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   selector: {
     flex: 1,
     padding: 12,
@@ -278,30 +246,11 @@ const styles = StyleSheet.create({
     borderColor: '#333',
     alignItems: 'center',
   },
-  selectorActive: {
-    backgroundColor: '#F8FF00',
-    borderColor: '#F8FF00',
-  },
-  selectorText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  eyeButton: {
-    marginBottom: 10,
-    alignSelf: 'flex-end',
-  },
-  validInput: {
-    borderColor: '#F8FF00',
-    ...Platform.select({
-      web: { boxShadow: '0px 0px 6px rgba(248, 255, 0, 0.4)' },
-      default: { shadowColor: '#F8FF00', shadowOpacity: 0.4, shadowRadius: 6 },
-    }),
-  },
-  invalidInput: {
-    borderColor: '#FF4444',
-  },
-  strength: {
-    marginBottom: 20,
-    fontWeight: '700',
-  },
+  selectorActive: { backgroundColor: '#F8FF00', borderColor: '#F8FF00' },
+  selectorText: { color: '#fff', fontWeight: '700' },
+  selectorTextActive: { color: '#000' },
+  eyeButton: { marginBottom: 20, alignSelf: 'flex-end' },
+  eyeText: { color: '#F8FF00', fontSize: 14 },
+  loginLink: { marginTop: 20 },
+  loginLinkText: { color: '#F8FF00', textAlign: 'center' },
 });
